@@ -1,0 +1,86 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                  🧪 TESTA ORA IL LOGIN CON GOOGLE                            ║
+║                                                                              ║
+║            (La configurazione è completa - verifica se funziona)             ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ HO GIÀ FATTO:
+
+1. Disattivato il servizio mock (che interferia col vero OAuth)
+2. Hardcodato il Client ID nell'app
+3. Configurato tutto su Google Cloud Console
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🚀 ORA TU FAI (3 PASSI SEMPLICI):
+
+PASSO 1: Apri il browser a questa URL
+   http://localhost:3000
+
+PASSO 2: Clicca sulla scheda "⚙️ Impostazioni" (in basso a destra)
+
+PASSO 3: Clicca sul bottone BLU "🔑 Accedi con Google"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ COSA DOVREBBE SUCCEDERE:
+
+✅ SUCCESSO (se tutto è configurato bene):
+   → Si apre una finestra di Google
+   → Seleziona: cleasil@gmail.com
+   → Clicca: Accetta permessi
+   → Torna nell'app
+   → Vedi: "✅ Connesso come cleasil@gmail.com"
+
+❌ ERRORE (se qualcosa non va):
+   → Niente succede, OPPURE
+   → Appare un errore nella pagina
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔍 SE NON FUNZIONA:
+
+1. Premi F12 per aprire la Console
+2. Clicca di nuovo il bottone "🔑 Accedi con Google"
+3. Guarda la Console (tab "Console")
+4. Cerca il messaggio di errore ROSSO
+
+Inviami UNO di questi errori:
+   ❌ "Redirect URI mismatch"
+   ❌ "Invalid client"
+   ❌ "Origin not authorized"
+   ❌ "Consent screen not configured"
+   ❌ Altro (scrivi qual è)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 SE VEDI QUESTO ERRORE:
+
+"Redirect URI mismatch"
+→ Ho bisogno di aggiungere http://localhost:3000/callback
+
+"Origin not authorized"
+→ Ho bisogno di aggiungere http://localhost:3000 (senza /callback)
+
+"Invalid client"
+→ C'è un problema con il Client ID
+
+"Consent screen not configured"
+→ C'è un problema col setup OAuth
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📧 COSA FARE ORA:
+
+1. Prova i 3 passi sopra
+2. Se funziona → Prova a aggiungere una scadenza e sincronizzarla!
+3. Se non funziona → Apri F12 Console e inviami l'errore esatto
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Creato: 22 Aprile 2026
+Status: Pronto per il test
+
+═══════════════════════════════════════════════════════════════════════════════

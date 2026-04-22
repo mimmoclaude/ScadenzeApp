@@ -1,0 +1,28 @@
+{
+  "appId": "com.scadenze.app",
+  "appName": "ScadenzeApp",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": null,
+      "keystoreAlias": null,
+      "keystoreAliasPassword": null,
+      "keystorePassword": null,
+      "signingType": "jarsigner"
+    }
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Preferences": {
+      "group": "ScadenzeApp"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "ScadenzeApp - Gestione Scadenze e Bollette",
+  "short_name": "ScadenzeApp",
+  "description": "Gestisci scadenze e bollette con sincronizzazione Google Calendar e Gmail",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#E8EDF8",
+  "theme_color": "#1B2D6B",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' fill='%231B2D6B' rx='45'/><text x='50%' y='50%' font-size='120' dominant-baseline='middle' text-anchor='middle' fill='white'>💳</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%231B2D6B' rx='120'/><text x='50%' y='50%' font-size='320' dominant-baseline='middle' text-anchor='middle' fill='white'>💳</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "finance"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23E8EDF8' width='540' height='720'/><text x='270' y='100' text-anchor='middle' font-size='48' fill='%231B2D6B' font-weight='bold'>ScadenzeApp</text><text x='270' y='200' text-anchor='middle' font-size='32' fill='%234285F4'>Gestione Scadenze</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ]
+}

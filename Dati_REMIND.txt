@@ -1,0 +1,21 @@
+
+ScadenzeApp-GIS.html
+----------------------
+
+Setup Google Cloud Console:
+1. Vai su console.cloud.google.com
+2. Crea progetto → API e servizi → Libreria
+3. Abilita Google Calendar API e Gmail API
+4. Credenziali → Crea → ID client OAuth 2.0
+5. Tipo: Applicazione Web
+6. Origini JavaScript autorizzate: aggiungi l'URL dove gira questa app (es. file:// o il tuo dominio)
+7. ⚠️ NON serve Redirect URI con questa libreria
+8. Copia il Client ID (termina con .apps.googleusercontent.com)
+
+---------------------------
+
+ID:  837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com
+     da consol registrato il 22/04/2026
+
+---------------------------
+

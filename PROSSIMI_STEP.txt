@@ -1,0 +1,104 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                  ⚡ PROSSIMI STEP PER RISOLVERE                             ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+HO FATTO:
+✓ Inserito il tuo Client ID nel codice dell'app
+✓ Creato una guida di verifica completa
+✓ Identificato i 5 punti da controllare su Google Cloud
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ORA TU DEVI:
+
+1️⃣ APRI QUESTO FILE:
+   VERIFICA_GOOGLE_SETUP.txt
+
+2️⃣ SEGUI LA CHECKLIST:
+   Controlla i 5 punti su Google Cloud Console
+
+3️⃣ RICARICA L'APP:
+   http://localhost:3000 → F5
+
+4️⃣ PROVA A CONNETTERTI:
+   ⚙️ Impostazioni → "🔑 Accedi con Google"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+CLIENT ID CONFIGURATO:
+   837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com
+
+═══════════════════════════════════════════════════════════════════════════════
+
+I 5 PUNTI PIÙ IMPORTANTI:
+
+1. Authorized JavaScript Origins deve avere:
+   http://localhost:3000
+
+2. Deve essere tipo:
+   Applicazione Web
+
+3. OAuth Consent Screen deve essere:
+   EXTERNAL + COMPLETATO
+
+4. API abilitate:
+   ✓ Google Calendar API
+   ✓ Gmail API
+
+5. Se usa Redirect:
+   http://localhost:3000/callback
+
+═══════════════════════════════════════════════════════════════════════════════
+
+SE ANCORA NON FUNZIONA:
+
+1. Apri F12 (Console)
+2. Clicca "🔑 Accedi con Google"
+3. Vedi l'errore nella console
+4. Confrontalo con la lista di errori in VERIFICA_GOOGLE_SETUP.txt
+5. Risolvi quel punto su Google Cloud
+6. Ricarica F5
+7. Prova di nuovo
+
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE IMPORTANTI:
+
+📄 VERIFICA_GOOGLE_SETUP.txt  ← APRI QUESTO PRIMO!
+📄 GOOGLE_OAUTH_QUICK_SETUP.md
+📄 COMPLETATO.txt
+📄 TEST_APP.txt
+
+═══════════════════════════════════════════════════════════════════════════════
+
+AIUTO RAPIDO:
+
+❌ "Redirect URI mismatch"
+→ Aggiungi: http://localhost:3000/callback
+
+❌ "Consent screen not configured"
+→ Vai: https://console.cloud.google.com/apis/consent
+→ Seleziona EXTERNAL
+
+❌ "Origin not authorized"
+→ Aggiungi: http://localhost:3000
+
+❌ "Invalid client"
+→ Controlla il Client ID sia esatto
+
+═══════════════════════════════════════════════════════════════════════════════
+
+RICORDA:
+
+L'app è pronta.
+Il Client ID è inserito.
+
+Ora devi solo verificare la configurazione su Google Cloud Console!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+👉 APRI ADESSO: VERIFICA_GOOGLE_SETUP.txt 👈
+
+═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,193 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              🔍 VERIFICA CONFIGURAZIONE GOOGLE CLOUD CONSOLE                 ║
+║                                                                              ║
+║                   Controlla questi 5 punti ESATTAMENTE!                     ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📋 CLIENT ID FORNITO:
+   837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PUNTO 1: Vai a Google Cloud Console
+
+   https://console.cloud.google.com/apis/credentials?project=velvety-glyph-493815-e1
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PUNTO 2: Trova il tuo Client ID nella lista
+
+   Apri la lista di "ID client OAuth 2.0"
+   Cerca: 837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com
+
+   Se NON lo vedi → PROBLEMA: Client ID non creato
+   Se lo vedi → Clicca su di esso per editarlo
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PUNTO 3: Controlla le Authorized JavaScript Origins
+
+   Nella schermata di edit del Client ID:
+
+   Sezione: "Origini JavaScript autorizzate"
+
+   DEVE contenere (esattamente così):
+   ┌─────────────────────────┐
+   │ http://localhost:3000   │  ← Minuscolo, SENZA barra finale!
+   └─────────────────────────┘
+
+   ❌ SBAGLIATO:
+      - HTTP://localhost:3000 (maiuscolo)
+      - http://localhost:3000/ (con barra)
+      - https://localhost:3000 (https invece di http)
+      - http://127.0.0.1:3000 (numero IP)
+
+   ✅ CORRETTO:
+      - http://localhost:3000
+
+   Se NON c'è → AGGIUNGI:
+      1. Clicca "+ Aggiungi URI"
+      2. Scrivi: http://localhost:3000
+      3. Salva
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PUNTO 4: Controlla se è segnato come "Applicazione Web"
+
+   Il Client ID DEVE essere di tipo:
+   ┌──────────────────────────┐
+   │ Applicazione Web         │
+   └──────────────────────────┘
+
+   ❌ NON deve essere:
+      - Desktop
+      - Mobile
+      - Altro
+
+   Se è sbagliato → Crea uno nuovo di tipo "Applicazione Web"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PUNTO 5: Controlla OAuth Consent Screen
+
+   Vai a: https://console.cloud.google.com/apis/consent?project=velvety-glyph-493815-e1
+
+   Deve mostrare:
+   ┌──────────────────────────────────┐
+   │ Tipo utente: EXTERNAL            │
+   │ Status: COMPLETATO ✅            │
+   └──────────────────────────────────┘
+
+   Se non è completato:
+   1. Clicca "MODIFICA"
+   2. Compila il form (nome app, ecc)
+   3. Clicca "Salva e continua" fino alla fine
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ PUNTO 6: Verifica che le API sono abilitate
+
+   Vai a: https://console.cloud.google.com/apis/library?project=velvety-glyph-493815-e1
+
+   Cerca e verifica:
+
+   ✓ Google Calendar API → Status: "Abilitata" (blu)
+   ✓ Gmail API → Status: "Abilitata" (blu)
+
+   Se una dice "Disabilitata" (grigia):
+   1. Clicca su di essa
+   2. Clicca "Abilita"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 CHECKLIST VELOCE:
+
+   [ ] Client ID trovato in Google Cloud Console
+   [ ] Client ID = 837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com
+   [ ] Tipo = "Applicazione Web"
+   [ ] Authorized JavaScript Origins contiene: http://localhost:3000
+   [ ] OAuth Consent Screen = EXTERNAL + COMPLETATO
+   [ ] Google Calendar API = ABILITATA
+   [ ] Gmail API = ABILITATA
+
+═══════════════════════════════════════════════════════════════════════════════
+
+❌ SE MANCA QUALCOSA:
+
+"Manca Authorized JavaScript Origin"
+→ Aggiungi: http://localhost:3000
+→ SALVA il Client ID
+
+"OAuth Consent Screen non configurato"
+→ Vai a https://console.cloud.google.com/apis/consent
+→ Seleziona "EXTERNAL"
+→ Compila il form
+→ Salva
+
+"Una API non è abilitata"
+→ Vai a Library
+→ Cerca API
+→ Clicca "Abilita"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🔧 DOPO AVER VERIFICATO:
+
+1. Torna a http://localhost:3000
+2. Ricarica la pagina (F5)
+3. Vedi se dice "Connesso" adesso
+4. Se no, vedi la console (F12) per gli errori
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 ERRORI COMUNI:
+
+"Redirect URI mismatch"
+→ Significa che il redirect non è registrato
+→ Aggiungi come Authorized redirect URI: http://localhost:3000/callback
+
+"OAuth client not found"
+→ Il Client ID è sbagliato o non esiste
+→ Verifica il Client ID esatto su Google Cloud
+
+"The OAuth client is not authorized"
+→ Le origini non sono autorizzate
+→ Aggiungi http://localhost:3000 alle Authorized Origins
+
+"Consent screen not configured"
+→ Vai su https://console.cloud.google.com/apis/consent
+→ Configura l'OAuth Consent Screen
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📱 COME VERIFICARE DA CHROME:
+
+1. Apri http://localhost:3000
+2. Premi F12 (Console)
+3. Clicca "🔑 Accedi con Google"
+4. Vedi gli errori nella Console
+5. Leggi il messaggio di errore
+6. Corrisponde a uno dei problemi sopra?
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ QUANDO TUTTO È CONFIGURATO CORRETTAMENTE:
+
+1. Clicca "🔑 Accedi con Google"
+2. Si apre una finestra di Google
+3. Seleziona il tuo account
+4. Clicca "Accetta"
+5. Torna all'app
+6. Vedi "✅ Connesso come cleasil@gmail.com"
+7. Pronto!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📧 SE ANCORA NON FUNZIONA:
+
+Invia la console error (F12 → Console) e il messaggio di errore esatto.
+Così posso capire esattamente qual è il problema!
+
+═══════════════════════════════════════════════════════════════════════════════

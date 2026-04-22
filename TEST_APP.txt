@@ -1,0 +1,109 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                     ✅ TEST APP - GUIDA DI PROVA                            ║
+║                                                                              ║
+║                        Segui questi 5 step!                                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎯 TEST COMPLETO (3 MINUTI):
+
+1️⃣ APRI APP:
+   http://localhost:3000
+
+2️⃣ GUARDA LA HOME (🏠):
+   ✅ Vedi il logo ScadenzeApp?
+   ✅ Vedi "Non connesso" (grigio)?
+   ✅ Vedi 4 tab in basso?
+
+3️⃣ VAI A SCADENZE (📋):
+   Clicca "+ Aggiungi"
+
+4️⃣ AGGIUNGI BOLLETTA DI TEST:
+   
+   Titolo:     Test Bolletta
+   €:          50.00
+   Data:       Domani (seleziona dal calendario)
+   Categoria:  ⚡ Utenze
+   Frequenza:  Mensile
+   Note:       (lascia vuoto)
+   
+   Clicca "💾 Salva"
+
+5️⃣ SINCRONIZZA:
+   Clicca la bolletta che hai appena creato
+   Vedrai "📅+📧 Google"
+   Clicca "📅+📧 Google"
+
+✅ FATTO! Vedrai:
+   - ✓ "Sincronizzato con Calendar"
+   - ✓ "Email inviata"
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📊 COSA TESTARE:
+
+□ Home tab - Vedi statistiche?
+□ Scadenze - Riesci ad aggiungere?
+□ Categoria - Puoi cambiarla?
+□ Data - Il calendario funziona?
+□ Sincronizza - "Calendar + Email" appaiono?
+□ Impostazioni - Vedi il form Google?
+□ Esporta - Puoi scaricare JSON?
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 SE NON FUNZIONA QUALCOSA:
+
+"La pagina non carica"
+→ Ricarica: F5
+→ Cancella cache: Ctrl+Shift+Delete
+
+"Bottoni non rispondono"
+→ Attendi 2 secondi, Vite sta compilando
+→ Guarda il terminale per eventuali errori
+
+"Database non funziona"
+→ Apri Console (F12) → Application → IndexedDB
+→ Dovresti vedere 'ScadenzeAppDB' con 'payments' e 'settings'
+
+"Google OAuth non funziona"
+→ È normale! Per adesso usiamo il mock
+→ Quando aggiungi il vero Client ID, userà quello
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✨ RISULTATI ATTESI:
+
+Se tutto funziona vedrai:
+
+✅ App carica rapidamente
+✅ Puoi aggiungere bollette
+✅ Puoi modificare date/importi
+✅ Puoi marcare come pagate
+✅ I dati si salvano automaticamente
+✅ Sincronizzazione funziona (con mock)
+✅ Notifiche appaiono
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎊 SE TUTTO FUNZIONA:
+
+Congratulazioni! La tua app è pronta!
+
+Adesso puoi:
+1. Usarla quotidianamente
+2. Aggiungere il vero Google OAuth (opzionale)
+3. Deployarla (Netlify, Vercel, ecc)
+4. Buildare per Android
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📞 DOMANDE?
+
+Leggi questi file:
+- GETTING_STARTED.md (guide d'uso)
+- README.md (troubleshooting)
+- GOOGLE_OAUTH_QUICK_SETUP.md (configurazione avanzata)
+
+═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,114 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                   🔧 CONFIGURAZIONE GOOGLE - STATUS                         ║
+║                                                                              ║
+║                    ⏳ QUASI COMPLETO! (90% FATTO)                           ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ COMPLETATO:
+
+1. ✓ npm install → 156 packages
+2. ✓ Dev server avviato → http://localhost:3000
+3. ✓ App React completa e funzionante
+4. ✓ Google Calendar API → ABILITATA
+5. ✓ Gmail API → ABILITATA
+6. ✓ Progetto Google Cloud creato
+
+═══════════════════════════════════════════════════════════════════════════════
+
+⏳ MANCA SOLO:
+
+Creare OAuth 2.0 Client ID e aggiungerlo all'app
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📍 PROSSIMI 5 MINUTI:
+
+1️⃣ Apri:
+   https://console.cloud.google.com/apis/credentials?project=velvety-glyph-493815-e1
+
+2️⃣ Click: "+ Crea credenziali"
+   ↓
+   Seleziona: "ID client OAuth 2.0"
+
+3️⃣ Scegli tipo applicazione:
+   📍 Seleziona: "Applicazione Web"
+   📍 Click: "Crea"
+
+4️⃣ Configura origini autorizzate:
+
+   a) Origini JavaScript autorizzate:
+      → http://localhost:3000
+
+   b) URI di reindirizzamento autorizzati:
+      → http://localhost:3000/callback
+
+   Click: "Crea"
+
+5️⃣ Copia il Client ID:
+
+   Vedrai un popup con:
+   - Client ID: xxxxx-abc.apps.googleusercontent.com
+   - Client Secret: (non serve per questa app)
+
+   📋 COPIA solo il CLIENT ID
+
+6️⃣ Incolla nell'app:
+
+   a) Apri: http://localhost:3000
+   b) Click tab: "⚙️ Impostazioni"
+   c) Campo: "Google Client ID"
+   d) Incolla il Client ID
+   e) Click: "🔑 Accedi con Google"
+
+7️⃣ PROVA:
+
+   a) Aggiungi una scadenza di test
+   b) Click: "📅+📧 Google"
+   c) Verifica Gmail + Calendar ✅
+
+═══════════════════════════════════════════════════════════════════════════════
+
+💡 AIUTO VELOCE:
+
+❌ Problema: "Applicazione Web" non vedo l'opzione
+→ Soluzione: Scorrere la lista o selezionare dal dropdown
+
+❌ Problema: URL "http://localhost:3000" non funziona
+→ Soluzione: Deve essere esattamente così (minuscolo, senza barra finale)
+
+❌ Problema: "OAuth 2.0 consent screen needs to be configured"
+→ Soluzione: Vai a https://console.cloud.google.com/apis/consent
+   Clicca "Crea" e scegli "External" (per test)
+   Riempi nome app: "ScadenzeApp"
+   Clicca "Salva e continua" finché non finisce
+
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 RISULTATO FINALE:
+
+Quando tutto è configurato, vedrai:
+
+✅ App carica a http://localhost:3000
+✅ Tab "Impostazioni" con Client ID compilato
+✅ Button "🔑 Accedi con Google" funziona
+✅ Puoi sincronizzare scadenze con Google Calendar
+✅ Ricevi email automatiche da Gmail
+
+═══════════════════════════════════════════════════════════════════════════════
+
+📞 SE BLOCCATO:
+
+1. Chiudi e riapri http://localhost:3000
+2. Leggi GOOGLE_SETUP_TEMPLATE.md (ha screenshots)
+3. Leggi GETTING_STARTED.md
+4. Vedi la sezione "Setup Google Cloud Console" nell'app
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Creato: 21 Aprile 2026
+Progetto: ScadenzeApp
+Status: ⏳ In progress (solo credenziali OAuth rimaste)
+
+═══════════════════════════════════════════════════════════════════════════════

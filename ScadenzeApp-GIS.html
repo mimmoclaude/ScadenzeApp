@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <meta name="theme-color" content="#1B2D6B"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <title>ScadenzeApp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+  <!-- Google Identity Services — libreria ufficiale moderna -->
+  <script src="https://accounts.google.com/gsi/client" async></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#E8EDF8;font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+    #root{height:100%;display:flex;flex-direction:column}
+    input,select,textarea,button{font-family:'DM Sans',sans-serif}
+    ::-webkit-scrollbar{width:3px}
+    ::-webkit-scrollbar-thumb{background:#C7D0E8;border-radius:3px}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .fade{animation:fadeUp .32s cubic-bezier(.22,1,.36,1) both}
+    .tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600}
+    .card{background:#fff;border-radius:18px;box-shadow:0 2px 8px rgba(30,45,107,.07),0 0 0 1px rgba(30,45,107,.04)}
+    .rBtn{background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;border-radius:10px}
+    .rBtn:active,.card button:active{opacity:.7}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── SCOPES richiesti ────────────────────────────────────────────────────────
+const SCOPES = [
+  "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/gmail.send",
+  "https://www.googleapis.com/auth/userinfo.email",
+].join(" ");
+
+const GCAL  = "https://www.googleapis.com/calendar/v3";
+const GMAIL = "https://www.googleapis.com/gmail/v1";
+
+// ─── COSTANTI ─────────────────────────────────────────────────────────────────
+const CAT = {
+  utilities:    { emoji:"⚡", label:"Utenze",        color:"#F59E0B" },
+  rent:         { emoji:"🏠", label:"Affitto/Mutuo", color:"#6366F1" },
+  insurance:    { emoji:"🛡️", label:"Assicurazione", color:"#10B981" },
+  taxes:        { emoji:"🏛️", label:"Tasse/F24",    color:"#EF4444" },
+  subscription: { emoji:"📱", label:"Abbonamento",   color:"#8B5CF6" },
+  other:        { emoji:"💳", label:"Altro",         color:"#64748B" },
+};
+const REC = { once:"Una volta", monthly:"Mensile", quarterly:"Trimestrale", annual:"Annuale" };
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt       = d => d ? new Date(d).toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+const isOverdue = d => d && new Date(d) < new Date();
+const daysLeft  = d => Math.ceil((new Date(d) - new Date()) / 86400000);
+
+const store = {
+  get : k    => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):null; } catch { return null; } },
+  set : (k,v)=> { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+  del : k    => { try { localStorage.removeItem(k); } catch {} },
+};
+
+// ─── DATI DEMO ────────────────────────────────────────────────────────────────
+const dd = n => { const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const DEMO = [
+  {id:1, title:"Bolletta Enel",  amount:87.40, dueDate:dd(6),  recurrence:"monthly",   category:"utilities",    notes:"Contatore A38291", synced:false, emailed:false, paid:false},
+  {id:2, title:"Affitto",        amount:950,   dueDate:dd(11), recurrence:"monthly",   category:"rent",         notes:"",                 synced:false, emailed:false, paid:false},
+  {id:3, title:"TIM Fibra",      amount:29.90, dueDate:dd(16), recurrence:"monthly",   category:"subscription", notes:"",                 synced:false, emailed:false, paid:false},
+  {id:4, title:"RC Auto AXA",    amount:312,   dueDate:dd(57), recurrence:"annual",    category:"insurance",    notes:"Polizza 774421",   synced:false, emailed:false, paid:false},
+  {id:5, title:"IMU acconto",    amount:430,   dueDate:dd(58), recurrence:"annual",    category:"taxes",        notes:"16 giugno",        synced:true,  emailed:true,  paid:false},
+  {id:6, title:"Netflix",        amount:17.99, dueDate:dd(-10),recurrence:"monthly",   category:"subscription", notes:"",                 synced:false, emailed:false, paid:true },
+  {id:7, title:"Acqua ACEA",     amount:52.10, dueDate:dd(-5), recurrence:"quarterly", category:"utilities",    notes:"",                 synced:false, emailed:false, paid:false},
+  {id:8, title:"Condominio",     amount:180,   dueDate:dd(3),  recurrence:"monthly",   category:"other",        notes:"Amm. Rossi",       synced:false, emailed:false, paid:false},
+];
+
+// ─── MICRO COMPONENTS ─────────────────────────────────────────────────────────
+function Spinner(){ return <div style={{width:20,height:20,border:"2.5px solid #E2E8F0",borderTopColor:"#4285F4",borderRadius:"50%",animation:"spin .65s linear infinite"}}/> }
+function Tag({text,color}){ return <span className="tag" style={{background:color+"18",color}}>{text}</span> }
+function Empty({icon,title,sub}){ return(
+  <div style={{textAlign:"center",padding:"44px 20px"}}>
+    <div style={{fontSize:50,marginBottom:12}}>{icon}</div>
+    <div style={{fontWeight:600,color:"#475569",fontSize:15}}>{title}</div>
+    {sub&&<div style={{fontSize:13,color:"#94A3B8",marginTop:5}}>{sub}</div>}
+  </div>
+)}
+
+// ─── GOOGLE CALENDAR API ──────────────────────────────────────────────────────
+async function addToCalendar(token, p) {
+  const start = new Date(p.dueDate);
+  const end   = new Date(start); end.setHours(end.getHours()+1);
+  const r = await fetch(`${GCAL}/calendars/primary/events`, {
+    method:"POST",
+    headers:{ "Authorization":`Bearer ${token}`, "Content-Type":"application/json" },
+    body: JSON.stringify({
+      summary: `${CAT[p.category]?.emoji} ${p.title} — €${p.amount}`,
+      description: `💰 Importo: €${p.amount}\n📂 Categoria: ${CAT[p.category]?.label}\n🔁 Frequenza: ${REC[p.recurrence]}${p.notes?"\n📝 Note: "+p.notes:""}`,
+      start: { dateTime: start.toISOString(), timeZone:"Europe/Rome" },
+      end:   { dateTime: end.toISOString(),   timeZone:"Europe/Rome" },
+      colorId: "5",
+      reminders: { useDefault:false, overrides:[
+        { method:"email", minutes: 24*60 },
+        { method:"popup", minutes: 60 },
+      ]},
+    }),
+  });
+  if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||"Errore Calendar"); }
+}
+
+// ─── GMAIL API ────────────────────────────────────────────────────────────────
+function makeMail(to, p) {
+  const subj = `🔔 Scadenza: ${p.title} — €${p.amount.toFixed(2)} il ${fmt(p.dueDate)}`;
+  const body = [
+    `Ciao,`,``,
+    `Ti ricordiamo che il ${fmt(p.dueDate)} scadrà il seguente pagamento:`,``,
+    `📌 Oggetto:    ${p.title}`,
+    `💰 Importo:    €${p.amount.toFixed(2)}`,
+    `📂 Categoria:  ${CAT[p.category]?.label}`,
+    `🔁 Frequenza:  ${REC[p.recurrence]}`,
+    p.notes ? `📝 Note:       ${p.notes}` : null,
+    ``,`— ScadenzeApp`,
+  ].filter(l=>l!==null).join("\n");
+  const raw = [`From: me`,`To: ${to}`,`Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subj)))}?=`,`MIME-Version: 1.0`,`Content-Type: text/plain; charset=utf-8`,``,body].join("\n");
+  return btoa(unescape(encodeURIComponent(raw))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+async function sendMail(token, to, p) {
+  const r = await fetch(`${GMAIL}/users/me/messages/send`, {
+    method:"POST",
+    headers:{ "Authorization":`Bearer ${token}`, "Content-Type":"application/json" },
+    body: JSON.stringify({ raw: makeMail(to, p) }),
+  });
+  if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||"Errore Gmail"); }
+}
+
+// ─── APP ──────────────────────────────────────────────────────────────────────
+function ScadenzeApp() {
+  const [tab,        setTab]        = useState("home");
+  const [payments,   setPayments]   = useState([]);
+  const [token,      setToken]      = useState(null);
+  const [userEmail,  setUserEmail]  = useState("");
+  const [clientId,   setClientId]   = useState("");
+  const [notifEmail, setNotifEmail] = useState("");
+  const [loading,    setLoading]    = useState(false);
+  const [billUrl,    setBillUrl]    = useState("");
+  const [billData,   setBillData]   = useState(null);
+  const [billErr,    setBillErr]    = useState("");
+  const [addOpen,    setAddOpen]    = useState(false);
+  const [editId,     setEditId]     = useState(null);
+  const [toast,      setToast]      = useState(null);
+  const [filter,     setFilter]     = useState("all");
+  const [form,       setForm]       = useState({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""});
+  const tokenClientRef = useRef(null);
+
+  // ── Bootstrap ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    let p = store.get("payments");
+    if (!p || !p.length) { p = DEMO; store.set("payments", DEMO); }
+    setPayments(p);
+    const c  = store.get("gClientId");   if (c)  { setClientId(c); }
+    const e  = store.get("userEmail");   if (e)  setUserEmail(e);
+    const ne = store.get("notifEmail");  if (ne) setNotifEmail(ne);
+    // Non salviamo il token in localStorage: GIS li gestisce internamente
+    // e scadono dopo 1h — l'utente deve ri-autorizzare
+  }, []);
+
+  // ── Inizializza GIS token client ─────────────────────────────────────────
+  const initGIS = useCallback((cid) => {
+    if (!window.google) return null;
+    return window.google.accounts.oauth2.initTokenClient({
+      client_id: cid,
+      scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) {
+          notify("❌ " + (resp.error_description || resp.error));
+          setLoading(false);
+          return;
+        }
+        const tk = resp.access_token;
+        setToken(tk);
+        // Recupera email
+        try {
+          const me = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+            headers: { Authorization: `Bearer ${tk}` }
+          });
+          const info = await me.json();
+          setUserEmail(info.email || "");
+          store.set("userEmail", info.email || "");
+          if (!notifEmail) {
+            setNotifEmail(info.email || "");
+            store.set("notifEmail", info.email || "");
+          }
+          notify(`✅ Connesso come ${info.email}`);
+        } catch {
+          notify("✅ Connesso a Google");
+        }
+        setLoading(false);
+      },
+    });
+  }, [notifEmail]);
+
+  const handleLogin = () => {
+    const cid = clientId.trim();
+    if (!cid) { notify("⚠️ Inserisci prima il Client ID Google"); return; }
+    store.set("gClientId", cid);
+
+    // Aspetta che GIS sia caricato
+    const tryLogin = () => {
+      if (!window.google?.accounts?.oauth2) {
+        setTimeout(tryLogin, 300);
+        return;
+      }
+      setLoading(true);
+      const client = initGIS(cid);
+      if (!client) { notify("❌ Libreria Google non caricata, riprova"); setLoading(false); return; }
+      tokenClientRef.current = client;
+      // requestAccessToken apre il popup Google nativo — nessun redirect
+      client.requestAccessToken({ prompt: "consent" });
+    };
+    tryLogin();
+  };
+
+  const handleLogout = () => {
+    if (token && window.google?.accounts?.oauth2) {
+      window.google.accounts.oauth2.revoke(token, () => {});
+    }
+    setToken(null);
+    setUserEmail("");
+    notify("Disconnesso da Google");
+  };
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  const notify   = (msg, dur=3200) => { setToast(msg); setTimeout(() => setToast(null), dur); };
+  const saveAll  = list => { store.set("payments", list); setPayments(list); };
+  const openAdd  = () => { setEditId(null); setForm({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""}); setAddOpen(true); };
+  const openEdit = p  => { setEditId(p.id); setForm({title:p.title,amount:String(p.amount),dueDate:p.dueDate,recurrence:p.recurrence,category:p.category,notes:p.notes||""}); setAddOpen(true); };
+
+  const saveForm = () => {
+    if (!form.title || !form.dueDate) { notify("⚠️ Titolo e data sono obbligatori"); return; }
+    const entry = { ...form, amount: parseFloat(form.amount)||0, synced:false, emailed:false };
+    const list  = editId
+      ? payments.map(p => p.id===editId ? {...p,...entry} : p)
+      : [...payments, { id:Date.now(), ...entry }];
+    saveAll(list); setAddOpen(false);
+    notify(editId ? "✏️ Aggiornata!" : "✅ Scadenza aggiunta!");
+  };
+
+  const deletePay = id => { saveAll(payments.filter(p=>p.id!==id)); notify("🗑️ Eliminata"); };
+  const markPaid  = id => { saveAll(payments.map(p=>p.id===id?{...p,paid:!p.paid}:p)); };
+
+  // ── Sync singolo ─────────────────────────────────────────────────────────
+  const syncOne = async (p, silent=false) => {
+    if (!token) { notify("⚠️ Prima connetti il tuo account Google in Impostazioni"); return; }
+    setLoading(true);
+    let calOk=false, mailOk=false;
+    try { await addToCalendar(token, p); calOk=true; }
+    catch(e) { if(!silent) notify(`❌ Calendar: ${e.message}`); }
+    const dest = notifEmail || userEmail;
+    if (dest) {
+      try { await sendMail(token, dest, p); mailOk=true; }
+      catch(e) { if(!silent) notify(`❌ Gmail: ${e.message}`); }
+    }
+    if (calOk || mailOk) {
+      saveAll(payments.map(x => x.id===p.id ? {...x,synced:calOk,emailed:mailOk} : x));
+      if (!silent) {
+        const msg = [calOk?"📅 Aggiunto al calendario":"", mailOk?`📧 Email inviata a ${dest}`:""].filter(Boolean).join(" · ");
+        notify(msg);
+      }
+    }
+    setLoading(false);
+    return { calOk, mailOk };
+  };
+
+  const syncAll = async () => {
+    const pending = payments.filter(p => !p.synced && !p.paid);
+    if (!pending.length) { notify("Tutte già sincronizzate!"); return; }
+    setLoading(true);
+    for (const p of pending) await syncOne(p, true);
+    setLoading(false);
+    notify(`📅 ${pending.length} scadenze sincronizzate con Google!`);
+  };
+
+  // ── Bill reader ───────────────────────────────────────────────────────────
+  const readBill = async () => {
+    if (!billUrl.trim()) return;
+    setLoading(true); setBillData(null); setBillErr("");
+    try {
+      const res  = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514", max_tokens:800,
+          tools:[{type:"web_search_20250305",name:"web_search"}],
+          messages:[{role:"user",content:`Visita: ${billUrl}\n\nEstraci dalla bolletta:\n- Importo totale €\n- Data scadenza pagamento\n- Nome fornitore\n- Descrizione sintetica\n- Titolo breve max 5 parole\n\nRispondi SOLO JSON valido, nessun markdown:\n{"title":"...","provider":"...","amount":"€XX,XX","dueDate":"YYYY-MM-DD","description":"..."}`}]
+        })
+      });
+      const data = await res.json();
+      const text = data.content.filter(b=>b.type==="text").map(b=>b.text).join("");
+      setBillData(JSON.parse(text.replace(/```json|```/g,"").trim()));
+    } catch { setBillErr("Impossibile leggere la bolletta. L'URL deve essere accessibile pubblicamente."); }
+    setLoading(false);
+  };
+
+  const importBill = () => {
+    if (!billData) return;
+    const entry = {
+      id:Date.now(), title:billData.title||billData.provider||"Bolletta",
+      amount:parseFloat((billData.amount||"0").replace(/[^0-9,]/g,"").replace(",","."))||0,
+      dueDate:billData.dueDate||"", recurrence:"once", category:"utilities",
+      notes:billData.description||"", synced:false, emailed:false,
+    };
+    saveAll([...payments, entry]);
+    setBillData(null); setBillUrl(""); setTab("payments");
+    notify("✅ Bolletta importata nelle scadenze!");
+  };
+
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const sorted   = [...payments].sort((a,b) => new Date(a.dueDate)-new Date(b.dueDate));
+  const overdue  = sorted.filter(p => !p.paid && isOverdue(p.dueDate));
+  const upcoming = sorted.filter(p => !p.paid && !isOverdue(p.dueDate));
+  const totalDue = upcoming.reduce((s,p) => s+p.amount, 0);
+  const filtered = filter==="all"?sorted : filter==="upcoming"?upcoming : filter==="overdue"?overdue : sorted.filter(p=>p.paid);
+
+  // ── Style helpers ─────────────────────────────────────────────────────────
+  const inp = {width:"100%",border:"1.5px solid #E2E8F0",borderRadius:11,padding:"12px 13px",fontSize:15,outline:"none",background:"#F8FAFC",color:"#1E293B",WebkitAppearance:"none"};
+  const btn = (bg,col,ex={}) => ({background:bg,color:col,border:"none",borderRadius:13,padding:"14px",fontWeight:700,fontSize:15,cursor:"pointer",width:"100%",...ex});
+  const gGradient = "linear-gradient(135deg,#4285F4 0%,#34A853 100%)";
+
+  const NAV = [{id:"home",icon:"🏠",label:"Home"},{id:"payments",icon:"📋",label:"Scadenze"},{id:"bills",icon:"📄",label:"Bollette"},{id:"settings",icon:"⚙️",label:"Impostazioni"}];
+
+  // ── RENDER ────────────────────────────────────────────────────────────────
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100%",background:"#E8EDF8",maxWidth:480,margin:"0 auto",position:"relative"}}>
+
+      {/* TOAST */}
+      {toast && <div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:"#1E293B",color:"#fff",borderRadius:14,padding:"12px 22px",fontSize:14,fontWeight:500,zIndex:9999,boxShadow:"0 8px 40px rgba(0,0,0,.3)",animation:"fadeIn .2s ease",whiteSpace:"nowrap",maxWidth:"92vw",textAlign:"center"}}>{toast}</div>}
+
+      {/* SPINNER OVERLAY */}
+      {loading && <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.3)",zIndex:998,display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(3px)"}}>
+        <div className="card" style={{padding:"22px 32px",display:"flex",alignItems:"center",gap:12}}><Spinner/><span style={{color:"#475569",fontSize:14,fontWeight:500}}>Elaborazione…</span></div>
+      </div>}
+
+      {/* HEADER */}
+      <div style={{background:"linear-gradient(145deg,#162560 0%,#2D4FBD 60%,#3B63E8 100%)",color:"#fff",paddingTop:20,flexShrink:0,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:-30,right:-30,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
+        <div style={{position:"absolute",top:20,right:60,width:60,height:60,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
+
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"0 20px",position:"relative"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:38,height:38,borderRadius:11,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>💳</div>
+            <div>
+              <div style={{fontFamily:"'DM Serif Display'",fontSize:21,letterSpacing:"-0.3px",lineHeight:1}}>ScadenzeApp</div>
+              <div style={{fontSize:11,opacity:.65,marginTop:2}}>Pagamenti · Bollette · Google</div>
+            </div>
+          </div>
+          <div style={{background:token?"rgba(52,168,83,.3)":"rgba(255,255,255,.12)",borderRadius:10,padding:"5px 10px",fontSize:11,fontWeight:600,border:token?"1px solid rgba(52,168,83,.5)":"none",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+            {token ? `✅ ${userEmail.split("@")[0]}` : "⚪ Non connesso"}
+          </div>
+        </div>
+
+        {tab==="home" && (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:16,padding:"0 20px",position:"relative"}}>
+            {[{n:overdue.length,l:"Scadute",bg:"rgba(239,68,68,.85)"},{n:upcoming.length,l:"In arrivo",bg:"rgba(255,255,255,.14)"},{n:`€${totalDue.toFixed(0)}`,l:"Totale dovuto",bg:"rgba(255,255,255,.1)"}].map(c=>(
+              <div key={c.l} style={{background:c.bg,borderRadius:14,padding:"11px 12px",backdropFilter:"blur(8px)",border:"1px solid rgba(255,255,255,.1)"}}>
+                <div style={{fontSize:22,fontWeight:800,letterSpacing:"-0.5px"}}>{c.n}</div>
+                <div style={{fontSize:10,opacity:.82,marginTop:3,fontWeight:500}}>{c.l}</div>
+              </div>
+            ))}
+          </div>
+        )}
+        {tab!=="home" && <div style={{height:14}}/>}
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",position:"relative"}}>
+          {NAV.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"10px 0 12px",display:"flex",flexDirection:"column",alignItems:"center",gap:3,border:"none",background:"none",cursor:"pointer",color:tab===t.id?"#fff":"rgba(255,255,255,.45)",transition:"color .2s",position:"relative",WebkitTapHighlightColor:"transparent"}}>
+              <span style={{fontSize:21}}>{t.icon}</span>
+              <span style={{fontSize:10,fontWeight:tab===t.id?700:400}}>{t.label}</span>
+              {tab===t.id&&<div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:24,height:3,background:"#fff",borderRadius:"3px 3px 0 0"}}/>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── BODY ── */}
+      <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
+
+        {/* ══ HOME ══ */}
+        {tab==="home" && <div style={{padding:14}} className="fade">
+          {overdue.length>0 && <div className="card" style={{marginBottom:12,padding:16,borderLeft:"4px solid #EF4444",background:"#FFF5F5"}}>
+            <div style={{fontWeight:700,color:"#DC2626",marginBottom:10}}>⚠️ Pagamenti Scaduti</div>
+            {overdue.map(p=>(
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 0",borderBottom:"1px solid #FEE2E2"}}>
+                <div>
+                  <div style={{fontWeight:600,fontSize:14,color:"#1E293B"}}>{CAT[p.category]?.emoji} {p.title}</div>
+                  <div style={{fontSize:12,color:"#94A3B8",marginTop:2}}>{fmt(p.dueDate)}</div>
+                </div>
+                <div style={{textAlign:"right"}}>
+                  <div style={{fontWeight:800,color:"#EF4444",fontSize:16}}>€{p.amount.toFixed(2)}</div>
+                  <button onClick={()=>markPaid(p.id)} style={{fontSize:11,color:"#10B981",fontWeight:700,background:"none",border:"none",cursor:"pointer",marginTop:2,WebkitTapHighlightColor:"transparent"}}>✓ Segna pagato</button>
+                </div>
+              </div>
+            ))}
+          </div>}
+
+          <div className="card" style={{padding:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:16,color:"#1E293B"}}>📅 Prossime scadenze</div>
+              <button onClick={openAdd} style={{background:"#4285F4",color:"#fff",border:"none",borderRadius:9,padding:"6px 15px",fontSize:13,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>+ Nuova</button>
+            </div>
+            {upcoming.length===0 ? <Empty icon="🎉" title="Nessuna scadenza imminente" sub="Ottimo lavoro!"/>
+            : upcoming.slice(0,8).map((p,i) => {
+              const d=daysLeft(p.dueDate); const urgent=d<=7;
+              return (
+                <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 0",borderBottom:i<Math.min(upcoming.length,8)-1?"1px solid #F1F5F9":"none"}}>
+                  <div style={{width:42,height:42,borderRadius:13,background:CAT[p.category]?.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:21,flexShrink:0}}>{CAT[p.category]?.emoji}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:14,color:"#1E293B",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</div>
+                    <div style={{fontSize:11,color:urgent?"#F59E0B":"#94A3B8",fontWeight:urgent?700:400,marginTop:2}}>{fmt(p.dueDate)} · {urgent?`⚡ tra ${d}gg`:`tra ${d}gg`}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontWeight:800,fontSize:16,color:"#1E293B"}}>€{p.amount.toFixed(2)}</div>
+                    <button onClick={()=>syncOne(p)} style={{fontSize:10,color:p.synced?"#34A853":"#4285F4",fontWeight:700,background:"none",border:"none",cursor:"pointer",marginTop:2,WebkitTapHighlightColor:"transparent"}}>
+                      {p.synced?"✅ Sync":"📅 Sync"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {upcoming.length>0 && <button onClick={syncAll} style={{...btn(gGradient,"#fff"),marginTop:12,WebkitTapHighlightColor:"transparent"}}>📅 Sincronizza tutto con Google</button>}
+
+          <div className="card" style={{marginTop:12,padding:16}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#1E293B",marginBottom:12}}>📊 Spese per categoria</div>
+            {Object.entries(CAT).map(([k,v])=>{
+              const tot=payments.filter(p=>p.category===k&&!p.paid).reduce((s,p)=>s+p.amount,0);
+              if(!tot) return null;
+              const pct=totalDue>0?(tot/totalDue)*100:0;
+              return(<div key={k} style={{marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:13,color:"#475569"}}>{v.emoji} {v.label}</span>
+                  <span style={{fontSize:13,fontWeight:700,color:"#1E293B"}}>€{tot.toFixed(2)}</span>
+                </div>
+                <div style={{height:5,background:"#F1F5F9",borderRadius:99,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${pct}%`,background:v.color,borderRadius:99}}/>
+                </div>
+              </div>);
+            })}
+          </div>
+        </div>}
+
+        {/* ══ SCADENZE ══ */}
+        {tab==="payments" && <div style={{padding:14}} className="fade">
+          <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:12,scrollbarWidth:"none"}}>
+            {[["all","Tutte"],["upcoming","In arrivo"],["overdue","Scadute"],["paid","Pagate"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setFilter(k)} style={{flexShrink:0,padding:"8px 18px",borderRadius:99,border:"none",cursor:"pointer",fontWeight:filter===k?700:500,fontSize:13,background:filter===k?"#4285F4":"#fff",color:filter===k?"#fff":"#64748B",boxShadow:filter===k?"0 2px 10px rgba(66,133,244,.35)":"none",WebkitTapHighlightColor:"transparent"}}>{l}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:13,color:"#94A3B8",fontWeight:500}}>{filtered.length} scadenz{filtered.length===1?"a":"e"}</div>
+            <button onClick={openAdd} style={{background:"#4285F4",color:"#fff",border:"none",borderRadius:10,padding:"8px 16px",fontWeight:700,fontSize:13,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>+ Aggiungi</button>
+          </div>
+          {filtered.length===0 ? <Empty icon="📋" title="Nessuna scadenza" sub="Aggiungila o importa una bolletta"/>
+          : filtered.map((p,i)=>(
+            <div key={p.id} className="card fade" style={{marginBottom:10,padding:16,opacity:p.paid?.88:1,animationDelay:`${i*25}ms`}}>
+              <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                <div style={{width:44,height:44,borderRadius:14,background:CAT[p.category]?.color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0}}>{CAT[p.category]?.emoji}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,fontSize:15,color:"#1E293B",textDecoration:p.paid?"line-through":"none",marginBottom:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.title}</div>
+                  <div style={{fontSize:12,color:"#94A3B8"}}>{fmt(p.dueDate)} · <span style={{color:CAT[p.category]?.color,fontWeight:600}}>{REC[p.recurrence]}</span></div>
+                  {p.notes&&<div style={{fontSize:11,color:"#94A3B8",marginTop:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.notes}</div>}
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:7}}>
+                    {p.paid&&<Tag text="✓ Pagato" color="#10B981"/>}
+                    {isOverdue(p.dueDate)&&!p.paid&&<Tag text="Scaduto" color="#EF4444"/>}
+                    {!isOverdue(p.dueDate)&&!p.paid&&daysLeft(p.dueDate)<=7&&<Tag text={`⚡ tra ${daysLeft(p.dueDate)}gg`} color="#F59E0B"/>}
+                    {p.synced&&<Tag text="📅 Cal" color="#34A853"/>}
+                    {p.emailed&&<Tag text="📧 Mail" color="#4285F4"/>}
+                  </div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontWeight:800,fontSize:18,color:isOverdue(p.dueDate)&&!p.paid?"#EF4444":"#1E293B"}}>€{p.amount.toFixed(2)}</div>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:7,marginTop:12,paddingTop:12,borderTop:"1px solid #F1F5F9"}}>
+                <button onClick={()=>markPaid(p.id)} style={{flex:1,background:p.paid?"#F8FAFC":"#F0FDF4",color:p.paid?"#94A3B8":"#16A34A",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>{p.paid?"↩️ Riapri":"✓ Pagato"}</button>
+                <button onClick={()=>syncOne(p)} style={{flex:1,background:"#F0F7FF",color:"#4285F4",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>📅+📧 Google</button>
+                <button onClick={()=>openEdit(p)} className="rBtn" style={{width:40,background:"#F8FAFC",color:"#64748B",fontSize:16,WebkitTapHighlightColor:"transparent"}}>✏️</button>
+                <button onClick={()=>{if(confirm(`Eliminare "${p.title}"?`))deletePay(p.id);}} className="rBtn" style={{width:40,background:"#FEF2F2",color:"#EF4444",fontSize:16,WebkitTapHighlightColor:"transparent"}}>🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>}
+
+        {/* ══ BOLLETTE ══ */}
+        {tab==="bills" && <div style={{padding:14}} className="fade">
+          <div className="card" style={{padding:18,marginBottom:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10}}>
+              <div style={{width:44,height:44,borderRadius:14,background:"#EFF6FF",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>📄</div>
+              <div><div style={{fontWeight:700,fontSize:16,color:"#1E293B"}}>Lettore Bollette AI</div><div style={{fontSize:12,color:"#64748B",marginTop:2}}>Analisi automatica con Claude</div></div>
+            </div>
+            <p style={{fontSize:13,color:"#64748B",marginBottom:14,lineHeight:1.65}}>Incolla l'URL del portale clienti: Claude legge la pagina ed estrae importo e scadenza automaticamente.</p>
+            <input value={billUrl} onChange={e=>setBillUrl(e.target.value)} placeholder="https://portale.enel.it/fattura/12345" style={{...inp,marginBottom:10}}/>
+            <button onClick={readBill} disabled={loading||!billUrl.trim()} style={{...btn("linear-gradient(135deg,#162560,#3B5BDB)","#fff"),opacity:!billUrl.trim()?.55:1,WebkitTapHighlightColor:"transparent"}}>
+              {loading?"⏳ Analisi in corso…":"🔍 Analizza Bolletta"}
+            </button>
+          </div>
+          {billData&&!billErr&&<div className="card fade" style={{padding:16,marginBottom:12,border:"2px solid #BBF7D0"}}>
+            <div style={{fontWeight:700,color:"#16A34A",marginBottom:12,fontSize:15}}>✅ Bolletta rilevata</div>
+            {[["📌","Titolo",billData.title],["🏢","Fornitore",billData.provider],["💰","Importo",billData.amount],["📅","Scadenza",billData.dueDate?fmt(billData.dueDate):"N/D"],["📝","Descrizione",billData.description]].filter(r=>r[2]).map(([e,k,v])=>(
+              <div key={k} style={{display:"flex",gap:8,marginBottom:8,fontSize:14}}><span>{e}</span><span style={{color:"#64748B"}}>{k}:</span><span style={{fontWeight:600,color:"#1E293B"}}>{v}</span></div>
+            ))}
+            <div style={{display:"flex",gap:8,marginTop:14}}>
+              <button onClick={importBill} style={{...btn("#16A34A","#fff"),flex:1,WebkitTapHighlightColor:"transparent"}}>➕ Aggiungi alle scadenze</button>
+              <button onClick={()=>setBillData(null)} style={{...btn("#F1F5F9","#64748B",{width:"auto",padding:"14px 16px"}),WebkitTapHighlightColor:"transparent"}}>✕</button>
+            </div>
+          </div>}
+          {billErr&&<div className="card" style={{padding:16,marginBottom:12,border:"1px solid #FECACA",background:"#FFF5F5"}}>
+            <div style={{fontWeight:700,color:"#DC2626",marginBottom:6}}>❌ Errore</div>
+            <p style={{fontSize:13,color:"#EF4444",lineHeight:1.5}}>{billErr}</p>
+          </div>}
+          <div className="card" style={{padding:16}}>
+            <div style={{fontWeight:700,fontSize:14,color:"#1E293B",marginBottom:12}}>💡 Portali supportati</div>
+            {[["⚡","Luce & Gas","Enel, A2A, Edison, Eni"],["📱","Telefonia","TIM, Vodafone, WindTre, Fastweb"],["🛡️","Assicurazioni","Generali, Allianz, UnipolSai"],["🏛️","Fisco","AdE, F24, IMU, TARI"],["🏦","Banche","Estratti conto, finanziamenti"]].map(([e,t,s])=>(
+              <div key={t} style={{display:"flex",gap:12,padding:"10px 0",borderBottom:"1px solid #F1F5F9",alignItems:"center"}}>
+                <span style={{fontSize:22,flexShrink:0}}>{e}</span>
+                <div><div style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t}</div><div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>{s}</div></div>
+              </div>
+            ))}
+          </div>
+        </div>}
+
+        {/* ══ IMPOSTAZIONI ══ */}
+        {tab==="settings" && <div style={{padding:14}} className="fade">
+
+          {/* Google Connect */}
+          <div className="card" style={{padding:18,marginBottom:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+              <svg width="44" height="44" viewBox="0 0 44 44"><rect width="44" height="44" rx="13" fill="#fff" stroke="#E2E8F0" strokeWidth="1"/><path d="M22.5 19.3v5.4h7.5c-.3 1.9-2 5.6-7.5 5.6-4.5 0-8.2-3.7-8.2-8.3s3.7-8.3 8.2-8.3c2.6 0 4.3 1.1 5.3 2l3.6-3.5C29 9.4 26 8 22.5 8 15.6 8 10 13.6 10 20.5S15.6 33 22.5 33c7.8 0 13-5.5 13-13.2 0-.9-.1-1.6-.2-2.2h-12.8z" fill="#4285F4"/></svg>
+              <div>
+                <div style={{fontWeight:700,fontSize:16,color:"#1E293B"}}>Google Account</div>
+                <div style={{fontSize:12,color:"#64748B",marginTop:2}}>Calendar · Gmail · Zero redirect URI</div>
+              </div>
+            </div>
+
+            {/* Istruzioni corrette GIS */}
+            <div style={{background:"#F0F7FF",border:"1px solid #BFDBFE",borderRadius:11,padding:13,marginBottom:14,fontSize:12,color:"#1D4ED8",lineHeight:1.8}}>
+              <b>⚡ Setup Google Cloud Console:</b><br/>
+              1. Vai su <b>console.cloud.google.com</b><br/>
+              2. Crea progetto → <b>API e servizi → Libreria</b><br/>
+              3. Abilita <b>Google Calendar API</b> e <b>Gmail API</b><br/>
+              4. <b>Credenziali → Crea → ID client OAuth 2.0</b><br/>
+              5. Tipo: <b>Applicazione Web</b><br/>
+              6. <b>Origini JavaScript autorizzate</b>: aggiungi l'URL dove gira questa app (es. <code>file://</code> o il tuo dominio)<br/>
+              7. ⚠️ <b>NON serve Redirect URI</b> con questa libreria<br/>
+              8. Copia il <b>Client ID</b> (termina con <code>.apps.googleusercontent.com</code>)
+            </div>
+
+            <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>Google Client ID</label>
+            <input value={clientId} onChange={e=>setClientId(e.target.value)} onBlur={()=>store.set("gClientId",clientId)}
+              placeholder="123456789-abc.apps.googleusercontent.com"
+              style={{...inp,fontFamily:"monospace",fontSize:11,marginBottom:12}}/>
+
+            <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>📧 Email per notifiche</label>
+            <input value={notifEmail} onChange={e=>setNotifEmail(e.target.value)} onBlur={()=>store.set("notifEmail",notifEmail)}
+              placeholder="tua@gmail.com"
+              style={{...inp,marginBottom:14}}/>
+
+            <button
+              onClick={token ? handleLogout : handleLogin}
+              style={{...btn(token?"#FEF2F2":gGradient, token?"#EF4444":"#fff"),WebkitTapHighlightColor:"transparent"}}>
+              {token ? `🚪 Disconnetti (${userEmail})` : "🔑 Accedi con Google"}
+            </button>
+
+            {token && <div style={{marginTop:10,padding:"10px 12px",background:"#F0FDF4",borderRadius:10,fontSize:12,color:"#16A34A",fontWeight:500}}>
+              ✅ Connesso · il token dura 1 ora. Se smette di funzionare, disconnetti e riconnetti.
+            </div>}
+          </div>
+
+          {/* Come funziona */}
+          <div className="card" style={{padding:18,marginBottom:12}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#1E293B",marginBottom:12}}>🔄 Come funziona la sync</div>
+            {[["📅","Google Calendar","Evento con promemoria popup 1h prima + email 24h prima"],["📧","Gmail","Email di promemoria all'indirizzo configurato"],["🔔","Notifiche","Gestite direttamente da Google — arrivano anche su Android"]].map(([e,t,s])=>(
+              <div key={t} style={{display:"flex",gap:12,padding:"9px 0",borderBottom:"1px solid #F1F5F9"}}>
+                <span style={{fontSize:22,flexShrink:0}}>{e}</span>
+                <div><div style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t}</div><div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>{s}</div></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Riepilogo */}
+          <div className="card" style={{padding:18,marginBottom:12}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#1E293B",marginBottom:12}}>📊 Riepilogo</div>
+            {[["Scadenze",payments.length],["Importo dovuto",`€${payments.filter(p=>!p.paid).reduce((s,p)=>s+p.amount,0).toFixed(2)}`],["Su Calendar",payments.filter(p=>p.synced).length],["Email inviate",payments.filter(p=>p.emailed).length],["Pagate",payments.filter(p=>p.paid).length],["Account Google",token?userEmail:"Non connesso"]].map(([k,v])=>(
+              <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #F1F5F9",fontSize:14}}>
+                <span style={{color:"#64748B"}}>{k}</span>
+                <span style={{fontWeight:700,color:"#1E293B",maxWidth:180,textAlign:"right",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</span>
+              </div>
+            ))}
+            <button onClick={()=>{if(confirm("Ripristinare dati demo?")){ store.set("payments",DEMO); setPayments(DEMO); notify("Demo ripristinata!"); }}}
+              style={{marginTop:14,background:"#FEF2F2",color:"#EF4444",border:"none",borderRadius:10,padding:"10px 16px",fontSize:13,fontWeight:600,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+              🔄 Ripristina dati demo
+            </button>
+          </div>
+          <div style={{height:20}}/>
+        </div>}
+
+        <div style={{height:16}}/>
+      </div>
+
+      {/* MODAL ADD/EDIT */}
+      {addOpen && <div onClick={e=>{if(e.target===e.currentTarget)setAddOpen(false);}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.48)",zIndex:500,display:"flex",alignItems:"flex-end",backdropFilter:"blur(3px)"}}>
+        <div style={{width:"100%",maxWidth:480,margin:"0 auto",background:"#fff",borderRadius:"22px 22px 0 0",padding:"20px 20px 36px",maxHeight:"92dvh",overflowY:"auto",animation:"slideUp .3s cubic-bezier(.22,1,.36,1)"}}>
+          <div style={{width:40,height:4,background:"#E2E8F0",borderRadius:99,margin:"0 auto 18px"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+            <div style={{fontFamily:"'DM Serif Display'",fontSize:22,color:"#1E293B"}}>{editId?"Modifica":"Nuova scadenza"}</div>
+            <button onClick={()=>setAddOpen(false)} style={{background:"#F1F5F9",border:"none",borderRadius:10,width:36,height:36,cursor:"pointer",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",WebkitTapHighlightColor:"transparent"}}>✕</button>
+          </div>
+          {[{label:"Titolo *",key:"title",type:"text",ph:"Es. Bolletta Enel, Mutuo…"},{label:"Importo (€)",key:"amount",type:"number",ph:"0.00"},{label:"Data scadenza *",key:"dueDate",type:"date",ph:""}].map(f=>(
+            <div key={f.key} style={{marginBottom:14}}>
+              <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>{f.label}</label>
+              <input type={f.type} placeholder={f.ph} value={form[f.key]} onChange={e=>setForm({...form,[f.key]:e.target.value})} style={inp}/>
+            </div>
+          ))}
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>Categoria</label>
+            <select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} style={inp}>
+              {Object.entries(CAT).map(([k,v])=><option key={k} value={k}>{v.emoji} {v.label}</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>Frequenza</label>
+            <select value={form.recurrence} onChange={e=>setForm({...form,recurrence:e.target.value})} style={inp}>
+              {Object.entries(REC).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:22}}>
+            <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>Note</label>
+            <textarea value={form.notes} onChange={e=>setForm({...form,notes:e.target.value})} rows={2} placeholder="Numero fattura, IBAN…" style={{...inp,resize:"vertical"}}/>
+          </div>
+          <button onClick={saveForm} style={{...btn(gGradient,"#fff"),borderRadius:14,padding:"15px",WebkitTapHighlightColor:"transparent"}}>
+            💾 {editId?"Aggiorna":"Salva scadenza"}
+          </button>
+        </div>
+      </div>}
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ScadenzeApp/>);
+</script>
+</body>
+</html>

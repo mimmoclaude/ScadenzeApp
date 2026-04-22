@@ -1,0 +1,147 @@
+╔════════════════════════════════════════════════════════════════════╗
+║                 SCADENZEAPP - QUICK REFERENCE CARD                ║
+╚════════════════════════════════════════════════════════════════════╝
+
+🎯 3 COSE DA RICORDARE:
+
+1. APP RUNS HERE:
+   👉 http://localhost:3000
+
+2. GOOGLE CONSOLE:
+   👉 console.cloud.google.com/apis/credentials?project=velvety-glyph-493815-e1
+
+3. SETUP GUIDE:
+   👉 GOOGLE_OAUTH_QUICK_SETUP.md
+
+═════════════════════════════════════════════════════════════════════
+
+⚡ FASTEST PATH (7 MINUTI):
+
+Step 1: Vai a Google Cloud Console
+  → Click "+ Crea credenziali"
+  → Scegli "ID client OAuth 2.0"
+  → Seleziona "Applicazione Web"
+
+Step 2: Compila:
+  Nome: ScadenzeApp
+
+  Origini JavaScript:
+  → http://localhost:3000
+
+  Redirect URI:
+  → http://localhost:3000/callback
+
+Step 3: Copia il Client ID che compare
+
+Step 4: Apri http://localhost:3000
+
+Step 5: Vai a "⚙️ Impostazioni"
+
+Step 6: Incolla Client ID nel campo
+
+Step 7: Clicca "🔑 Accedi con Google"
+
+✅ DONE!
+
+═════════════════════════════════════════════════════════════════════
+
+📋 FILE IMPORTANTI:
+
+├─ 🔴 GOOGLE_OAUTH_QUICK_SETUP.md  ← GUIDA VISUALE PASSO-PASSO
+├─ 🟢 CONFIGURAZIONE_FINALE.txt    ← STATUS COMPLETO
+├─ 🔵 GETTING_STARTED.md            ← Per principianti
+├─ 🟡 FREE_PLAN.md                  ← Costi e quote
+└─ ⚪ README.md                      ← Help & troubleshooting
+
+═════════════════════════════════════════════════════════════════════
+
+🔑 CREDENZIALI:
+
+Google Account: cleasil@gmail.com
+Project ID: velvety-glyph-493815-e1
+APIs: Calendar + Gmail (ABILITATE ✅)
+
+═════════════════════════════════════════════════════════════════════
+
+✅ CHECKLIST FINALE:
+
+[ ] Apri http://localhost:3000
+[ ] Vedi l'app carica (4 tab in basso)
+[ ] Leggi GOOGLE_OAUTH_QUICK_SETUP.md
+[ ] Crea OAuth 2.0 Client ID
+[ ] Incolla Client ID nell'app
+[ ] Clicca "Accedi con Google"
+[ ] Autorizza i permessi
+[ ] Vedi "Connesso come cleasil@gmail.com"
+[ ] Aggiungi scadenza di test
+[ ] Sincronizza con Google
+[ ] Verifica Gmail + Calendar
+[ ] ✅ COMPLETATO!
+
+═════════════════════════════════════════════════════════════════════
+
+⚠️ ERRORI COMUNI:
+
+"Can't find button Crea"
+→ Ricarica la pagina (F5) e aspetta
+
+"OAuth consent screen not configured"
+→ Vai a console.cloud.google.com/apis/consent
+  Clicca "Crea", scegli "External", compila nome
+
+"Redirect URI mismatch"
+→ Assicurati URL sia ESATTO:
+  http://localhost:3000/callback
+
+═════════════════════════════════════════════════════════════════════
+
+💡 PRO TIP:
+
+Apri 2 finestre Chrome:
+1. A sinistra: http://localhost:3000 (app)
+2. A destra: Google Cloud Console (setup)
+
+Così puoi seguire il setup guardando l'app contemporaneamente!
+
+═════════════════════════════════════════════════════════════════════
+
+📊 STATO ATTUALE:
+
+✅ App running
+✅ APIs enabled
+✅ Database ready
+✅ PWA configured
+
+⏳ Waiting for: OAuth Client ID (5 min)
+
+═════════════════════════════════════════════════════════════════════
+
+🚀 NEXT STEPS:
+
+Immediate:
+1. Leggi GOOGLE_OAUTH_QUICK_SETUP.md
+2. Segui i 7 step
+3. Testa l'app
+
+Optional (dopo):
+- Deploy su Netlify
+- Build APK Android
+- Personalizzazioni
+
+═════════════════════════════════════════════════════════════════════
+
+📞 NEED HELP?
+
+Problem? Check these in order:
+1. GOOGLE_OAUTH_QUICK_SETUP.md (errori comuni)
+2. GETTING_STARTED.md (FAQ)
+3. README.md (troubleshooting)
+
+═════════════════════════════════════════════════════════════════════
+
+✨ YOU'RE 95% THERE! ✨
+
+Just follow the 7 steps in GOOGLE_OAUTH_QUICK_SETUP.md
+and you'll have a fully functional app in under 10 minutes!
+
+═════════════════════════════════════════════════════════════════════
