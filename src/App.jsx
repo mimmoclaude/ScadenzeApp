@@ -162,7 +162,7 @@ export function App() {
           scope: "email profile https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send",
           resourceUrl: "https://www.googleapis.com/oauth2/v3/userinfo",
           web: { appId: cid, responseType: "token" },
-          android: { appId: cid, responseType: "code", redirectUrl: "com.scadenze.app:/" },
+          android: { appId: cid, responseType: "code", redirectUrl: "com.scadenze.app:/oauth2redirect" },
           pkceEnabled: true,
         });
         const tk = resp["access_token"];
