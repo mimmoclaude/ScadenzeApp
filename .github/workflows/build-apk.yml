@@ -46,16 +46,27 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
-    - name: Copy debug keystore to Android default location
+    - name: Copy debug keystore and verify SHA-1
       run: |
         mkdir -p ~/.android
         cp debug.keystore ~/.android/debug.keystore
+        echo "=== SHA-1 of our debug.keystore ==="
+        keytool -list -v -keystore debug.keystore -storepass android 2>&1 | grep -E "SHA1:|Alias name:" || true
+        echo "=== Keystore file info ==="
+        ls -la debug.keystore ~/.android/debug.keystore
+
+    - name: Patch build.gradle to use explicit keystore path
+      run: |
+        KEYSTORE_ABS="$(realpath debug.keystore)"
+        echo "Using keystore: $KEYSTORE_ABS"
+        # Inject explicit debug signing config into build.gradle
+        sed -i "s|storeFile file.*|storeFile file('$KEYSTORE_ABS')|g" android/app/build.gradle || true
+        grep -A5 "signingConfigs" android/app/build.gradle || echo "signingConfigs not found (using default)"
 
     - name: Build APK (Debug)
       run: |
         cd android
         chmod +x gradlew
-        ls -la gradlew
         ./gradlew clean
         ./gradlew assembleDebug -x lint
 
