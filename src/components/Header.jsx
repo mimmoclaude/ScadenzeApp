@@ -1,6 +1,6 @@
 export function Header({ tab, token, userEmail, overdue, upcoming, totalDue }) {
   return (
-    <div style={{background:"linear-gradient(145deg,#162560 0%,#2D4FBD 60%,#3B63E8 100%)",color:"#fff",paddingTop:20,flexShrink:0,position:"relative",overflow:"hidden"}}>
+    <div style={{background:"linear-gradient(145deg,#162560 0%,#2D4FBD 60%,#3B63E8 100%)",color:"#fff",paddingTop:"calc(env(safe-area-inset-top) + 12px)",flexShrink:0,position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:-30,right:-30,width:130,height:130,borderRadius:"50%",background:"rgba(255,255,255,.06)"}}/>
       <div style={{position:"absolute",top:20,right:60,width:60,height:60,borderRadius:"50%",background:"rgba(255,255,255,.04)"}}/>
 
