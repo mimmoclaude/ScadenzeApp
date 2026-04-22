@@ -49,6 +49,9 @@ jobs:
       run: |
         sed -i 's/versionCode 1/versionCode 1\n            manifestPlaceholders = [appAuthRedirectScheme: "com.scadenze.app"]/' android/app/build.gradle
 
+    - name: Copy debug keystore
+      run: cp debug.keystore android/app/debug.keystore || true
+
     - name: Build APK (Debug)
       run: |
         cd android
