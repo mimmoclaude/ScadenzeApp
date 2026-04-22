@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { getPayments, addPayment, updatePayment, deletePayment, getSetting, setSetting, deleteAllPayments, exportPayments, importData } from './db';
 import { Header } from './components/Header';
 import { Nav } from './components/Nav';
@@ -147,32 +149,50 @@ export function App() {
     });
   }, [notifEmail]);
 
-  const handleLogin = () => {
-    console.log("🔵 handleLogin called, clientId:", clientId.substring(0, 20) + "...");
+  const handleLogin = async () => {
     const cid = clientId.trim();
     if (!cid) { notify("⚠️ Inserisci prima il Client ID Google"); return; }
 
-    const tryLogin = () => {
-      console.log("🔵 tryLogin called, window.google exists?", !!window.google);
-      if (!window.google?.accounts?.oauth2) {
-        console.log("⏳ Waiting for Google GSI to load...");
-        setTimeout(tryLogin, 300);
-        return;
+    if (Capacitor.isNativePlatform()) {
+      setLoading(true);
+      try {
+        await GoogleAuth.initialize({
+          clientId: cid,
+          scopes: ["email", "profile",
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/gmail.send"],
+          grantOfflineAccess: false,
+        });
+        const user = await GoogleAuth.signIn();
+        const tk = user.authentication.accessToken;
+        setToken(tk);
+        setUserEmail(user.email || "");
+        await setSetting("userEmail", user.email || "");
+        if (!notifEmail) { setNotifEmail(user.email || ""); await setSetting("notifEmail", user.email || ""); }
+        notify(`✅ Connesso come ${user.email}`);
+      } catch(e) {
+        notify("❌ Login fallito: " + (e.message || e));
+      } finally {
+        setLoading(false);
       }
-      console.log("✅ Google GSI found!");
+      return;
+    }
+
+    const tryLogin = () => {
+      if (!window.google?.accounts?.oauth2) { setTimeout(tryLogin, 300); return; }
       setLoading(true);
       const client = initGIS(cid);
-      console.log("🔵 initGIS returned:", !!client);
       if (!client) { notify("❌ Libreria Google non caricata, riprova"); setLoading(false); return; }
       tokenClientRef.current = client;
-      console.log("🔵 Calling requestAccessToken...");
       client.requestAccessToken({ prompt: "consent" });
     };
     tryLogin();
   };
 
-  const handleLogout = () => {
-    if (token && window.google?.accounts?.oauth2) {
+  const handleLogout = async () => {
+    if (Capacitor.isNativePlatform()) {
+      try { await GoogleAuth.signOut(); } catch {}
+    } else if (token && window.google?.accounts?.oauth2) {
       window.google.accounts.oauth2.revoke(token, () => {});
     }
     setToken(null);

@@ -18,6 +18,13 @@
     }
   },
   "plugins": {
+    "GoogleAuth": {
+      "scopes": ["email", "profile",
+        "https://www.googleapis.com/auth/calendar.events",
+        "https://www.googleapis.com/auth/gmail.send"],
+      "serverClientId": "837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": false
+    },
     "PushNotifications": {
       "presentationOptions": ["badge", "sound", "alert"]
     },
