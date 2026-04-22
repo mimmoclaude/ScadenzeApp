@@ -90,7 +90,7 @@ export function App() {
   const [payments,   setPayments]   = useState([]);
   const [token,      setToken]      = useState(null);
   const [userEmail,  setUserEmail]  = useState("");
-  const [clientId,   setClientId]   = useState("837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com");
+  const [clientId,   setClientId]   = useState("837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com"); // Web Client ID
   const [notifEmail, setNotifEmail] = useState("");
   const [loading,    setLoading]    = useState(false);
   const [billUrl,    setBillUrl]    = useState("");
@@ -156,8 +156,10 @@ export function App() {
     if (Capacitor.isNativePlatform()) {
       setLoading(true);
       try {
+        // Android: usa sempre il Web Client ID (non Android Client ID)
+        const WEB_CLIENT_ID = "837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com";
         GoogleAuth.initialize({
-          clientId: cid,
+          clientId: WEB_CLIENT_ID,
           scopes: ["email", "profile",
             "https://www.googleapis.com/auth/calendar.events",
             "https://www.googleapis.com/auth/gmail.send"],
