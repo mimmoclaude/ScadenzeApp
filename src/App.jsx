@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { OAuth2Client } from '@byteowls/capacitor-oauth2';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { getPayments, addPayment, updatePayment, deletePayment, getSetting, setSetting, deleteAllPayments, exportPayments, importData } from './db';
 import { Header } from './components/Header';
 import { Nav } from './components/Nav';
@@ -156,22 +156,21 @@ export function App() {
     if (Capacitor.isNativePlatform()) {
       setLoading(true);
       try {
-        const resp = await OAuth2Client.authenticate({
-          authorizationBaseUrl: "https://accounts.google.com/o/oauth2/auth",
-          accessTokenEndpoint: "https://www.googleapis.com/oauth2/v4/token",
-          scope: "email profile https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send",
-          resourceUrl: "https://www.googleapis.com/oauth2/v3/userinfo",
-          web: { appId: cid, responseType: "token" },
-          android: { appId: "837673127946-psh05dosektugr8490oq1cubbsnv28jn.apps.googleusercontent.com", responseType: "code", redirectUrl: "com.googleusercontent.apps.837673127946-psh05dosektugr8490oq1cubbsnv28jn:/oauth2redirect" },
-          pkceEnabled: true,
+        GoogleAuth.initialize({
+          clientId: cid,
+          scopes: ["email", "profile",
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/gmail.send"],
+          grantOfflineAccess: false,
         });
-        const tk = resp["access_token"];
+        const user = await GoogleAuth.signIn();
+        const tk = user.authentication.accessToken;
         setToken(tk);
-        const email = resp["email"] || resp["resourceUrl"]?.email || "";
+        const email = user.email || "";
         setUserEmail(email);
         await setSetting("userEmail", email);
         if (!notifEmail) { setNotifEmail(email); await setSetting("notifEmail", email); }
-        notify(`✅ Connesso come ${email || "Google"}`);
+        notify(`✅ Connesso come ${email}`);
       } catch(e) {
         notify("❌ Login fallito: " + (e.message || e));
       } finally {
@@ -193,7 +192,7 @@ export function App() {
 
   const handleLogout = async () => {
     if (Capacitor.isNativePlatform()) {
-      try { await OAuth2Client.logout({ appId: clientId }); } catch {}
+      try { await GoogleAuth.signOut(); } catch {}
     } else if (token && window.google?.accounts?.oauth2) {
       window.google.accounts.oauth2.revoke(token, () => {});
     }

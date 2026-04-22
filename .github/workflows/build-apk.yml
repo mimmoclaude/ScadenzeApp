@@ -46,10 +46,6 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
-    - name: Add appAuthRedirectScheme to build.gradle
-      run: |
-        sed -i 's/versionCode 1/versionCode 1\n            manifestPlaceholders = [appAuthRedirectScheme: "com.googleusercontent.apps.837673127946-psh05dosektugr8490oq1cubbsnv28jn"]/' android/app/build.gradle
-
     - name: Copy debug keystore
       run: cp debug.keystore android/app/debug.keystore || true
 
