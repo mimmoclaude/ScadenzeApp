@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { OAuth2Client } from '@byteowls/capacitor-oauth2';
 import { getPayments, addPayment, updatePayment, deletePayment, getSetting, setSetting, deleteAllPayments, exportPayments, importData } from './db';
 import { Header } from './components/Header';
 import { Nav } from './components/Nav';
@@ -156,20 +156,22 @@ export function App() {
     if (Capacitor.isNativePlatform()) {
       setLoading(true);
       try {
-        await GoogleAuth.initialize({
-          clientId: cid,
-          scopes: ["email", "profile",
-            "https://www.googleapis.com/auth/calendar.events",
-            "https://www.googleapis.com/auth/gmail.send"],
-          grantOfflineAccess: false,
+        const resp = await OAuth2Client.authenticate({
+          authorizationBaseUrl: "https://accounts.google.com/o/oauth2/auth",
+          accessTokenEndpoint: "https://www.googleapis.com/oauth2/v4/token",
+          scope: "email profile https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/gmail.send",
+          resourceUrl: "https://www.googleapis.com/oauth2/v3/userinfo",
+          web: { appId: cid, responseType: "token" },
+          android: { appId: cid, responseType: "code", redirectUrl: "com.scadenze.app:/" },
+          pkceEnabled: true,
         });
-        const user = await GoogleAuth.signIn();
-        const tk = user.authentication.accessToken;
+        const tk = resp["access_token"];
         setToken(tk);
-        setUserEmail(user.email || "");
-        await setSetting("userEmail", user.email || "");
-        if (!notifEmail) { setNotifEmail(user.email || ""); await setSetting("notifEmail", user.email || ""); }
-        notify(`✅ Connesso come ${user.email}`);
+        const email = resp["email"] || resp["resourceUrl"]?.email || "";
+        setUserEmail(email);
+        await setSetting("userEmail", email);
+        if (!notifEmail) { setNotifEmail(email); await setSetting("notifEmail", email); }
+        notify(`✅ Connesso come ${email || "Google"}`);
       } catch(e) {
         notify("❌ Login fallito: " + (e.message || e));
       } finally {
@@ -191,7 +193,7 @@ export function App() {
 
   const handleLogout = async () => {
     if (Capacitor.isNativePlatform()) {
-      try { await GoogleAuth.signOut(); } catch {}
+      try { await OAuth2Client.logout({ appId: clientId }); } catch {}
     } else if (token && window.google?.accounts?.oauth2) {
       window.google.accounts.oauth2.revoke(token, () => {});
     }
