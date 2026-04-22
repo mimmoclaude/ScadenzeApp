@@ -83,6 +83,15 @@ jobs:
         ./gradlew clean
         ./gradlew assembleDebug -x lint
 
+    - name: Verify APK signature SHA-1
+      run: |
+        APK="android/app/build/outputs/apk/debug/app-debug.apk"
+        echo "=== APK location: $APK ==="
+        ls -la "$APK"
+        echo "=== APK actual signing SHA-1 (from keytool -printcert) ==="
+        unzip -p "$APK" META-INF/*.RSA | keytool -printcert 2>&1 | grep -iE "SHA1:|SHA-1:|Owner:" || true
+        echo "=== Expected SHA-1: E1:7D:7F:18:34:BB:90:43:F3:19:FD:0B:2F:9F:19:C4:A8:1E:F9:17 ==="
+
     - name: Upload APK to artifacts
       uses: actions/upload-artifact@v4
       with:
