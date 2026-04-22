@@ -45,6 +45,10 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Add appAuthRedirectScheme to build.gradle
+      run: |
+        sed -i 's/versionCode 1/versionCode 1\n            manifestPlaceholders = [appAuthRedirectScheme: "com.scadenze.app"]/' android/app/build.gradle
+
     - name: Build APK (Debug)
       run: |
         cd android
