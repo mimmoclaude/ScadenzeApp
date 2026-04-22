@@ -1,0 +1,43 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║            ⚠️ AGGIUNTA MANUALE RICHIESTA - 2 MINUTI                          ║
+║                                                                              ║
+║         Devi aggiungere la URL online a Google Cloud Console                 ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PERCHÉ:
+L'app web ora è online su GitHub Pages. Devo autorizzare questo dominio su
+Google Cloud così che Google OAuth funzioni.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ISTRUZIONI (2 MINUTI):
+
+1️⃣ Vai a Google Cloud Console:
+   https://console.cloud.google.com/apis/credentials?project=velvety-glyph-493815-e1
+
+2️⃣ Clicca il Client ID:
+   837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com
+
+3️⃣ Sezione "Origini JavaScript autorizzate" - clicca "+ AGGIUNGI URI"
+
+4️⃣ Aggiungi ESATTAMENTE:
+   https://mimmoclaude.github.io
+
+5️⃣ Clicca "+ AGGIUNGI URI" di nuovo
+
+6️⃣ Aggiungi ESATTAMENTE:
+   https://mimmoclaude.github.io/ScadenzeApp
+
+7️⃣ Clicca "SALVA" in basso
+
+═══════════════════════════════════════════════════════════════════════════════
+
+POI:
+L'APK sarà automaticamente rebuildato su GitHub Actions con la nuova
+configurazione. Scarica il nuovo APK e installa sul telefono.
+
+L'app dovrebbe funzionare completamente adesso!
+
+═══════════════════════════════════════════════════════════════════════════════
