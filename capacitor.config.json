@@ -3,8 +3,7 @@
   "appName": "ScadenzeApp",
   "webDir": "dist",
   "server": {
-    "androidScheme": "https",
-    "url": "https://mimmoclaude.github.io/ScadenzeApp/"
+    "androidScheme": "https"
   },
   "ios": {
     "contentInset": "automatic"
