@@ -46,6 +46,19 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Add server_client_id to strings.xml (for GoogleAuth plugin)
+      run: |
+        STRINGS_FILE="android/app/src/main/res/values/strings.xml"
+        WEB_CLIENT_ID="837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com"
+        if ! grep -q "server_client_id" "$STRINGS_FILE"; then
+          sed -i "s|</resources>|    <string name=\"server_client_id\">${WEB_CLIENT_ID}</string>\n</resources>|" "$STRINGS_FILE"
+          echo "Added server_client_id to strings.xml"
+        else
+          echo "server_client_id already present"
+        fi
+        echo "=== strings.xml content ==="
+        cat "$STRINGS_FILE"
+
     - name: Copy debug keystore and verify SHA-1
       run: |
         mkdir -p ~/.android

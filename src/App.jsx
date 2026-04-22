@@ -174,7 +174,10 @@ export function App() {
         if (!notifEmail) { setNotifEmail(email); await setSetting("notifEmail", email); }
         notify(`✅ Connesso come ${email}`);
       } catch(e) {
-        notify("❌ Login fallito: " + (e.message || e));
+        console.error('[GoogleAuth]', e);
+        const code = e?.code || e?.errorCode || '';
+        const msg = e?.message || e?.error || JSON.stringify(e);
+        notify(`❌ Login fallito [${code}]: ${msg}`.slice(0, 180), 6000);
       } finally {
         setLoading(false);
       }
