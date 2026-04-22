@@ -46,8 +46,10 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
-    - name: Copy debug keystore
-      run: cp debug.keystore android/app/debug.keystore || true
+    - name: Copy debug keystore to Android default location
+      run: |
+        mkdir -p ~/.android
+        cp debug.keystore ~/.android/debug.keystore
 
     - name: Build APK (Debug)
       run: |
