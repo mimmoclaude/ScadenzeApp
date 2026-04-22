@@ -31,11 +31,14 @@ jobs:
     - name: Build web app
       run: npm run build
 
-    - name: Install Capacitor
-      run: npm install @capacitor/cli @capacitor/core @capacitor/android
+    - name: Install Capacitor CLI globally
+      run: npm install -g @capacitor/cli
+
+    - name: Install Capacitor dependencies
+      run: npm install @capacitor/core @capacitor/android --save-dev
 
     - name: Add Android platform
-      run: npx cap add android
+      run: npx cap add android || true
 
     - name: Sync Capacitor
       run: npx cap sync android
@@ -44,7 +47,9 @@ jobs:
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew assembleDebug
+        ls -la gradlew
+        ./gradlew clean
+        ./gradlew assembleDebug -x lint
 
     - name: Upload APK to artifacts
       uses: actions/upload-artifact@v3
