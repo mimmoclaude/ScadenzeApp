@@ -68,13 +68,44 @@ jobs:
         echo "=== Keystore file info ==="
         ls -la debug.keystore ~/.android/debug.keystore
 
-    - name: Patch build.gradle to use explicit keystore path
+    - name: Inject explicit signingConfigs into build.gradle
       run: |
         KEYSTORE_ABS="$(realpath debug.keystore)"
         echo "Using keystore: $KEYSTORE_ABS"
-        # Inject explicit debug signing config into build.gradle
-        sed -i "s|storeFile file.*|storeFile file('$KEYSTORE_ABS')|g" android/app/build.gradle || true
-        grep -A5 "signingConfigs" android/app/build.gradle || echo "signingConfigs not found (using default)"
+        BUILD_GRADLE="android/app/build.gradle"
+        echo "=== BEFORE PATCH ==="
+        cat "$BUILD_GRADLE"
+        # Create the signing config block using envsubst-safe placeholder
+        SIGNING_BLOCK="    signingConfigs {\n        debug {\n            storeFile file('${KEYSTORE_ABS}')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n"
+        # Remove any existing signingConfigs block (simple case: single block)
+        # Then inject the new one before buildTypes
+        if grep -q "signingConfigs" "$BUILD_GRADLE"; then
+          echo "signingConfigs block already present - replacing storeFile path only"
+          sed -i "s|storeFile file(.*)|storeFile file('${KEYSTORE_ABS}')|g" "$BUILD_GRADLE"
+        else
+          echo "Adding new signingConfigs block before buildTypes"
+          # Use awk to inject signingConfigs BEFORE the first buildTypes line
+          awk -v block="$SIGNING_BLOCK" '
+            /buildTypes[[:space:]]*\{/ && !done {
+              printf "%s", block;
+              done = 1;
+            }
+            { print }
+          ' "$BUILD_GRADLE" > "${BUILD_GRADLE}.new"
+          mv "${BUILD_GRADLE}.new" "$BUILD_GRADLE"
+        fi
+        # Ensure debug buildType references signingConfigs.debug
+        if ! grep -q "signingConfig signingConfigs.debug" "$BUILD_GRADLE"; then
+          echo "Adding signingConfig signingConfigs.debug to debug buildType"
+          # Inject into existing debug block, or create one
+          if awk '/buildTypes[[:space:]]*\{/,/^[[:space:]]*\}[[:space:]]*$/' "$BUILD_GRADLE" | grep -q "debug[[:space:]]*{"; then
+            sed -i '/buildTypes[[:space:]]*{/,/^[[:space:]]*}[[:space:]]*$/ s/debug[[:space:]]*{/debug {\n            signingConfig signingConfigs.debug/' "$BUILD_GRADLE"
+          else
+            sed -i 's|buildTypes[[:space:]]*{|buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }|' "$BUILD_GRADLE"
+          fi
+        fi
+        echo "=== AFTER PATCH ==="
+        cat "$BUILD_GRADLE"
 
     - name: Build APK (Debug)
       run: |
