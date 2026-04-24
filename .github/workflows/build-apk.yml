@@ -46,6 +46,39 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Inject google-services.json from GitHub Secret (FCM/Firebase)
+      run: |
+        DEST="android/app/google-services.json"
+        if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" ]; then
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 -d > "$DEST"
+          echo "✅ google-services.json iniettato da Secret"
+          # Sanity check
+          cat "$DEST" | python3 -c "import sys, json; d=json.load(sys.stdin); print('project_id:', d['project_info']['project_id'])"
+        else
+          echo "⚠️ GOOGLE_SERVICES_JSON_B64 non impostato - FCM disabilitato in questa build"
+          # Crea un google-services.json minimo placeholder per permettere la compilazione
+          cat > "$DEST" << 'PLACEHOLDER_EOF'
+        {
+          "project_info": {
+            "project_number": "000000000000",
+            "project_id": "placeholder-project",
+            "storage_bucket": "placeholder-project.appspot.com"
+          },
+          "client": [{
+            "client_info": {
+              "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+              "android_client_info": { "package_name": "com.scadenze.app" }
+            },
+            "oauth_client": [],
+            "api_key": [{ "current_key": "placeholder" }],
+            "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+          }],
+          "configuration_version": "1"
+        }
+        PLACEHOLDER_EOF
+          echo "ℹ️ Usato google-services.json placeholder (solo build - push non funzioneranno)"
+        fi
+
     - name: Add server_client_id to strings.xml (for GoogleAuth plugin)
       run: |
         STRINGS_FILE="android/app/src/main/res/values/strings.xml"
@@ -106,6 +139,31 @@ jobs:
         fi
         echo "=== AFTER PATCH ==="
         cat "$BUILD_GRADLE"
+
+    - name: Add Firebase dependencies to Android project (for FCM)
+      run: |
+        ROOT_GRADLE="android/build.gradle"
+        APP_GRADLE="android/app/build.gradle"
+
+        # Aggiungi Google Services classpath nel root build.gradle se non presente
+        if ! grep -q "google-services" "$ROOT_GRADLE"; then
+          sed -i "s|dependencies {|dependencies {\n        classpath 'com.google.gms:google-services:4.4.0'|" "$ROOT_GRADLE"
+          echo "✅ Aggiunto google-services classpath a $ROOT_GRADLE"
+        else
+          echo "ℹ️ google-services già presente in $ROOT_GRADLE"
+        fi
+
+        # Applica il plugin google-services all'app se non presente
+        if ! grep -q "com.google.gms.google-services" "$APP_GRADLE"; then
+          echo "" >> "$APP_GRADLE"
+          echo "apply plugin: 'com.google.gms.google-services'" >> "$APP_GRADLE"
+          echo "✅ Aggiunto 'apply plugin: com.google.gms.google-services' a $APP_GRADLE"
+        else
+          echo "ℹ️ google-services plugin già presente in $APP_GRADLE"
+        fi
+
+        echo "=== Root build.gradle dependencies ==="
+        grep -A5 "dependencies {" "$ROOT_GRADLE" | head -20 || true
 
     - name: Build APK (Debug)
       run: |

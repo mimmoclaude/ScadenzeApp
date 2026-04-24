@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { getPayments, addPayment, updatePayment, deletePayment, getSetting, setSetting, deleteAllPayments, exportPayments, importData } from './db';
+import { saveUserProfile, syncPaymentsToFirestore, upsertPayment, deletePaymentFromFirestore } from './firebase';
+import { registerPush } from './fcm';
+import { FIREBASE_CONFIGURED } from './firebaseConfig';
 import { Header } from './components/Header';
 import { Nav } from './components/Nav';
 import { Home } from './pages/Home';
@@ -101,6 +104,10 @@ export function App() {
   const [toast,      setToast]      = useState(null);
   const [filter,     setFilter]     = useState("all");
   const [form,       setForm]       = useState({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""});
+  // ── Preferenze Notifiche Push ─────────────────────────────────────────────
+  const [enablePush, setEnablePush] = useState(false);
+  const [notifyDays, setNotifyDays] = useState([3, 1, 0]); // giorni di anticipo (array)
+  const [fcmToken,   setFcmToken]   = useState("");
   const tokenClientRef = useRef(null);
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
@@ -111,9 +118,62 @@ export function App() {
       const c  = await getSetting("gClientId");   if (c)  { setClientId(c); }
       const e  = await getSetting("userEmail");   if (e)  setUserEmail(e);
       const ne = await getSetting("notifEmail");  if (ne) setNotifEmail(ne);
+      const ep = await getSetting("enablePush");  if (ep !== null && ep !== undefined) setEnablePush(!!ep);
+      const nd = await getSetting("notifyDays");  if (Array.isArray(nd) && nd.length) setNotifyDays(nd);
     };
     loadData();
   }, []);
+
+  // ── Push registration: quando enablePush si attiva AND utente loggato ────
+  useEffect(() => {
+    if (!FIREBASE_CONFIGURED || !enablePush || !userEmail) return;
+    let mounted = true;
+    (async () => {
+      const res = await registerPush({
+        onToken: async (tk) => {
+          if (!mounted) return;
+          setFcmToken(tk);
+          try {
+            await saveUserProfile({ email: userEmail, fcmToken: tk, enablePush: true, notifyDays });
+          } catch (e) { console.error('[saveUserProfile]', e); }
+        },
+        onNotification: (notif) => {
+          const title = notif?.title || notif?.notification?.title || 'Scadenza';
+          const body  = notif?.body  || notif?.notification?.body  || '';
+          notify(`🔔 ${title}${body ? ' · ' + body : ''}`, 5000);
+        },
+      });
+      if (!res.ok) {
+        console.warn('[FCM] registrazione fallita:', res.reason);
+        if (res.reason === 'permission-denied') {
+          notify('⚠️ Permesso notifiche negato', 4000);
+        }
+      }
+    })();
+    return () => { mounted = false; };
+  }, [enablePush, userEmail]);
+
+  // ── Quando cambiano notifyDays, aggiorna Firestore ───────────────────────
+  useEffect(() => {
+    if (!FIREBASE_CONFIGURED || !userEmail || !enablePush) return;
+    saveUserProfile({ email: userEmail, notifyDays }).catch(e => console.error('[notifyDays sync]', e));
+  }, [notifyDays, userEmail, enablePush]);
+
+  // ── Handler per toggle push dal Settings ─────────────────────────────────
+  const handleTogglePush = async (val) => {
+    setEnablePush(val);
+    await setSetting("enablePush", val);
+    if (!val && userEmail && FIREBASE_CONFIGURED) {
+      // Disabilita push = rimuove fcmToken da Firestore (il cron non invia più)
+      try { await saveUserProfile({ email: userEmail, enablePush: false, fcmToken: "" }); }
+      catch (e) { console.error('[disable push]', e); }
+    }
+  };
+
+  const handleSetNotifyDays = async (days) => {
+    setNotifyDays(days);
+    await setSetting("notifyDays", days);
+  };
 
   // ── Google Identity Services ─────────────────────────────────────────────
   const initGIS = useCallback((cid) => {
@@ -197,13 +257,21 @@ export function App() {
 
   const handleLogout = async () => {
     if (Capacitor.isNativePlatform()) {
-      try { await GoogleAuth.signOut(); } catch {}
+      try {
+        // signOut() = rimuove sessione locale; disconnect() = revoca permessi app
+        // Usiamo signOut (più rapido) - l'utente può comunque scegliere altro account
+        await GoogleAuth.signOut();
+      } catch (e) {
+        console.error('[GoogleAuth signOut]', e);
+      }
     } else if (token && window.google?.accounts?.oauth2) {
       window.google.accounts.oauth2.revoke(token, () => {});
     }
     setToken(null);
     setUserEmail("");
-    notify("Disconnesso da Google");
+    // Pulisci anche la persistenza locale per evitare "email fantasma" al riavvio
+    await setSetting("userEmail", "");
+    notify("✅ Disconnesso da Google");
   };
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -218,25 +286,42 @@ export function App() {
   const openAdd  = () => { setEditId(null); setForm({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""}); setAddOpen(true); };
   const openEdit = p  => { setEditId(p.id); setForm({title:p.title,amount:String(p.amount),dueDate:p.dueDate,recurrence:p.recurrence,category:p.category,notes:p.notes||""}); setAddOpen(true); };
 
+  // ── Helper: sync singolo payment su Firestore se push abilitato ─────────
+  const fsUpsert = async (payment) => {
+    if (!FIREBASE_CONFIGURED || !userEmail || !enablePush) return;
+    try { await upsertPayment(userEmail, payment); }
+    catch (e) { console.error('[Firestore upsert]', e); }
+  };
+  const fsDelete = async (id) => {
+    if (!FIREBASE_CONFIGURED || !userEmail || !enablePush) return;
+    try { await deletePaymentFromFirestore(userEmail, id); }
+    catch (e) { console.error('[Firestore delete]', e); }
+  };
+
   const saveForm = async () => {
     if (!form.title || !form.dueDate) { notify("⚠️ Titolo e data sono obbligatori"); return; }
     const entry = { ...form, amount: parseFloat(form.amount)||0, synced:false, emailed:false, paid: false };
-    let list;
+    let list, saved;
     if (editId) {
-      list = payments.map(p => p.id===editId ? {...p,...entry} : p);
-      await updatePayment({...payments.find(p => p.id===editId), ...entry});
+      saved = {...payments.find(p => p.id===editId), ...entry};
+      list = payments.map(p => p.id===editId ? saved : p);
+      await updatePayment(saved);
     } else {
-      const id = await addPayment({ id: Date.now(), ...entry });
-      list = [...payments, { id, ...entry }];
+      const id = Date.now();
+      saved = { id, ...entry };
+      await addPayment(saved);
+      list = [...payments, saved];
     }
     setPayments(list);
     setAddOpen(false);
+    fsUpsert(saved);
     notify(editId ? "✏️ Aggiornata!" : "✅ Scadenza aggiunta!");
   };
 
   const deletePay = async (id) => {
     await deletePayment(id);
     setPayments(payments.filter(p=>p.id!==id));
+    fsDelete(id);
     notify("🗑️ Eliminata");
   };
 
@@ -245,6 +330,7 @@ export function App() {
     const updated = {...p,paid:!p.paid};
     await updatePayment(updated);
     setPayments(payments.map(x => x.id===id ? updated : x));
+    fsUpsert(updated);
   };
 
   // ── Sync ─────────────────────────────────────────────────────────────────
@@ -323,7 +409,7 @@ export function App() {
         {tab==="home" && <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
         {tab==="payments" && <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
         {tab==="bills" && <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />}
-        {tab==="settings" && <Settings token={token} userEmail={userEmail} clientId={clientId} setClientId={setClientId} notifEmail={notifEmail} setNotifEmail={setNotifEmail} handleLogin={handleLogin} handleLogout={handleLogout} payments={payments} setPayments={setPayments} setSetting={setSetting} />}
+        {tab==="settings" && <Settings token={token} userEmail={userEmail} clientId={clientId} setClientId={setClientId} notifEmail={notifEmail} setNotifEmail={setNotifEmail} handleLogin={handleLogin} handleLogout={handleLogout} payments={payments} setPayments={setPayments} setSetting={setSetting} enablePush={enablePush} handleTogglePush={handleTogglePush} notifyDays={notifyDays} handleSetNotifyDays={handleSetNotifyDays} fcmToken={fcmToken} firebaseConfigured={FIREBASE_CONFIGURED} syncAllToFirestore={async () => { if (!FIREBASE_CONFIGURED || !userEmail) return; try { await syncPaymentsToFirestore(userEmail, payments); notify('☁️ Scadenze sincronizzate su cloud'); } catch (e) { notify('❌ Errore sync cloud'); console.error(e); } }} />}
         <div style={{height:16}}/>
       </div>
 

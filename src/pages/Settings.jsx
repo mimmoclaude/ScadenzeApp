@@ -4,7 +4,12 @@ const inp = {width:"100%",border:"1.5px solid #E2E8F0",borderRadius:11,padding:"
 const btn = (bg,col,ex={}) => ({background:bg,color:col,border:"none",borderRadius:13,padding:"14px",fontWeight:700,fontSize:15,cursor:"pointer",width:"100%",...ex});
 const gGradient = "linear-gradient(135deg,#4285F4 0%,#34A853 100%)";
 
-export function Settings({ token, userEmail, clientId, setClientId, notifEmail, setNotifEmail, handleLogin, handleLogout, payments, setPayments, setSetting: setSettingFunc }) {
+export function Settings({ token, userEmail, clientId, setClientId, notifEmail, setNotifEmail, handleLogin, handleLogout, payments, setPayments, setSetting: setSettingFunc, enablePush, handleTogglePush, notifyDays, handleSetNotifyDays, fcmToken, firebaseConfigured, syncAllToFirestore }) {
+  const toggleDay = (d) => {
+    const has = (notifyDays || []).includes(d);
+    const next = has ? notifyDays.filter(x => x !== d) : [...(notifyDays || []), d].sort((a,b) => b - a);
+    handleSetNotifyDays?.(next);
+  };
   const handleExport = async () => {
     const data = {
       payments,
@@ -69,13 +74,72 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
           placeholder="tua@gmail.com"
           style={{...inp,marginBottom:14}}/>
 
-        <button onClick={token ? handleLogout : handleLogin} style={{...btn(token?"#FEF2F2":gGradient, token?"#EF4444":"#fff"),WebkitTapHighlightColor:"transparent"}}>
-          {token ? `🚪 Disconnetti (${userEmail})` : "🔑 Accedi con Google"}
+        {/* Mostra logout se c'è token attivo OPPURE email salvata (token scaduto) */}
+        <button onClick={(token || userEmail) ? handleLogout : handleLogin} style={{...btn((token||userEmail)?"#FEF2F2":gGradient, (token||userEmail)?"#EF4444":"#fff"),WebkitTapHighlightColor:"transparent"}}>
+          {(token || userEmail) ? `🚪 Disconnetti${userEmail ? ` (${userEmail})` : ""}` : "🔑 Accedi con Google"}
         </button>
 
         {token && <div style={{marginTop:10,padding:"10px 12px",background:"#F0FDF4",borderRadius:10,fontSize:12,color:"#16A34A",fontWeight:500}}>
           ✅ Connesso · il token dura 1 ora. Se smette di funzionare, disconnetti e riconnetti.
         </div>}
+        {!token && userEmail && <div style={{marginTop:10,padding:"10px 12px",background:"#FEF3C7",borderRadius:10,fontSize:12,color:"#B45309",fontWeight:500}}>
+          ⚠️ Sessione scaduta · disconnetti e riconnetti per sincronizzare
+        </div>}
+      </div>
+
+      {/* Notifiche Push Remote */}
+      <div className="card" style={{padding:18,marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+          <div>
+            <div style={{fontWeight:700,fontSize:16,color:"#1E293B"}}>🔔 Notifiche push</div>
+            <div style={{fontSize:12,color:"#64748B",marginTop:2}}>Promemoria anche ad app chiusa (FCM)</div>
+          </div>
+          {/* Switch on/off */}
+          <label style={{position:"relative",display:"inline-block",width:48,height:28,flexShrink:0}}>
+            <input type="checkbox" checked={!!enablePush} disabled={!firebaseConfigured || !userEmail} onChange={e => handleTogglePush?.(e.target.checked)} style={{opacity:0,width:0,height:0}}/>
+            <span style={{position:"absolute",cursor:(!firebaseConfigured||!userEmail)?"not-allowed":"pointer",inset:0,background:enablePush?"#10B981":"#CBD5E1",borderRadius:14,transition:"0.2s",opacity:(!firebaseConfigured||!userEmail)?0.5:1}}>
+              <span style={{position:"absolute",height:22,width:22,left:enablePush?23:3,top:3,background:"#fff",borderRadius:"50%",transition:"0.2s",boxShadow:"0 2px 4px rgba(0,0,0,0.2)"}}/>
+            </span>
+          </label>
+        </div>
+
+        {!firebaseConfigured && (
+          <div style={{background:"#FEF3C7",border:"1px solid #FDE68A",borderRadius:11,padding:11,fontSize:12,color:"#92400E",lineHeight:1.5,marginBottom:10}}>
+            ⚠️ <b>Firebase non configurato.</b> Compila <code>src/firebaseConfig.js</code> con i dati del tuo progetto Firebase e aggiungi <code>google-services.json</code> in <code>android/app/</code>.
+          </div>
+        )}
+        {firebaseConfigured && !userEmail && (
+          <div style={{background:"#F0F7FF",border:"1px solid #BFDBFE",borderRadius:11,padding:11,fontSize:12,color:"#1D4ED8",lineHeight:1.5,marginBottom:10}}>
+            ℹ️ Prima accedi con Google per attivare le notifiche push.
+          </div>
+        )}
+
+        {enablePush && firebaseConfigured && userEmail && (
+          <>
+            <div style={{fontSize:12,fontWeight:600,color:"#64748B",marginBottom:8,marginTop:6}}>Quando notificare (giorni di anticipo)</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+              {[7, 3, 1, 0].map(d => {
+                const active = (notifyDays || []).includes(d);
+                const label = d === 0 ? "Oggi" : d === 1 ? "1 giorno" : `${d} giorni`;
+                return (
+                  <button key={d} onClick={() => toggleDay(d)}
+                    style={{flex:"1 1 40%",padding:"10px 12px",borderRadius:10,border:active?"2px solid #10B981":"1.5px solid #E2E8F0",background:active?"#ECFDF5":"#F8FAFC",color:active?"#065F46":"#64748B",fontWeight:600,fontSize:13,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>
+                    {active ? "✓ " : ""}{label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button onClick={syncAllToFirestore} style={{...btn("#4285F4","#fff"),marginBottom:8,WebkitTapHighlightColor:"transparent"}}>
+              ☁️ Sincronizza scadenze su cloud
+            </button>
+
+            <div style={{fontSize:11,color:"#94A3B8",lineHeight:1.6,marginTop:4}}>
+              Stato: {fcmToken ? <span style={{color:"#16A34A",fontWeight:600}}>✅ Dispositivo registrato</span> : <span style={{color:"#F59E0B",fontWeight:600}}>⏳ In attesa token...</span>}<br/>
+              Il server controlla ogni giorno alle 8:00 e invia una push per ogni scadenza nei giorni selezionati.
+            </div>
+          </>
+        )}
       </div>
 
       {/* Sync Info */}

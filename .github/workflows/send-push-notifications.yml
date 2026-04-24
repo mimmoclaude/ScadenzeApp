@@ -1,0 +1,282 @@
+name: Send Push Notifications (Cron Backend)
+
+# Esecuzione: ogni giorno alle 8:00 ora italiana (6:00 UTC in estate, 7:00 UTC in inverno)
+# Nota: GitHub Actions non supporta timezone → usiamo 6:00 UTC (ora legale CEST).
+# In inverno (CET = UTC+1) le notifiche arriveranno alle 7:00 — accettabile.
+on:
+  schedule:
+    - cron: '0 6 * * *'    # 08:00 CEST / 07:00 CET ogni giorno
+  workflow_dispatch:        # Esecuzione manuale per test
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    # ── Crea lo script di invio notifiche inline ──────────────────────────────
+    - name: Create notification script
+      run: |
+        cat > send-notifications.js << 'SCRIPT_EOF'
+        // ─── Script GitHub Actions: invio push notifiche via FCM REST API ─────────
+        // Legge gli utenti da Firestore, controlla scadenze, manda push FCM
+        // Auth: service account JWT (senza Google Auth Library - solo node built-ins)
+        // ─────────────────────────────────────────────────────────────────────────
+
+        const https = require('https');
+        const crypto = require('crypto');
+
+        // ── Config da GitHub Secrets ────────────────────────────────────────────
+        const PROJECT_ID         = process.env.FIREBASE_PROJECT_ID;
+        const SERVICE_ACCOUNT_B64 = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+
+        if (!PROJECT_ID || !SERVICE_ACCOUNT_B64) {
+          console.error('❌ Mancano variabili: FIREBASE_PROJECT_ID e/o FIREBASE_SERVICE_ACCOUNT_B64');
+          process.exit(1);
+        }
+
+        const SA = JSON.parse(Buffer.from(SERVICE_ACCOUNT_B64, 'base64').toString('utf8'));
+
+        // ── JWT per Google API (service account) ───────────────────────────────
+        function base64url(input) {
+          return Buffer.from(input).toString('base64')
+            .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
+        function makeJWT(sa, scopes) {
+          const now = Math.floor(Date.now() / 1000);
+          const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+          const payload = base64url(JSON.stringify({
+            iss: sa.client_email,
+            sub: sa.client_email,
+            aud: 'https://oauth2.googleapis.com/token',
+            iat: now,
+            exp: now + 3600,
+            scope: scopes.join(' '),
+          }));
+          const sign = crypto.createSign('RSA-SHA256');
+          sign.update(`${header}.${payload}`);
+          const sig = sign.sign(sa.private_key, 'base64')
+            .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+          return `${header}.${payload}.${sig}`;
+        }
+
+        async function getAccessToken(sa) {
+          const jwt = makeJWT(sa, [
+            'https://www.googleapis.com/auth/datastore',
+            'https://www.googleapis.com/auth/firebase.messaging',
+          ]);
+          const body = `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`;
+          return new Promise((resolve, reject) => {
+            const req = https.request({
+              hostname: 'oauth2.googleapis.com',
+              path: '/token',
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            }, res => {
+              let data = '';
+              res.on('data', c => data += c);
+              res.on('end', () => {
+                const parsed = JSON.parse(data);
+                if (parsed.error) return reject(new Error(parsed.error_description || parsed.error));
+                resolve(parsed.access_token);
+              });
+            });
+            req.on('error', reject);
+            req.write(body);
+            req.end();
+          });
+        }
+
+        // ── Firestore REST helper ───────────────────────────────────────────────
+        async function firestoreGet(path, token) {
+          return new Promise((resolve, reject) => {
+            const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${path}`;
+            https.get(url, {
+              headers: { Authorization: `Bearer ${token}` },
+            }, res => {
+              let data = '';
+              res.on('data', c => data += c);
+              res.on('end', () => resolve(JSON.parse(data)));
+            }).on('error', reject);
+          });
+        }
+
+        // Estrai valore dal campo Firestore (format: {"stringValue":"..."})
+        function fv(field) {
+          if (!field) return undefined;
+          if (field.stringValue !== undefined) return field.stringValue;
+          if (field.integerValue !== undefined) return Number(field.integerValue);
+          if (field.doubleValue !== undefined) return field.doubleValue;
+          if (field.booleanValue !== undefined) return field.booleanValue;
+          if (field.arrayValue !== undefined) {
+            return (field.arrayValue.values || []).map(v => fv(v));
+          }
+          if (field.mapValue !== undefined) {
+            const obj = {};
+            for (const [k, v] of Object.entries(field.mapValue.fields || {})) obj[k] = fv(v);
+            return obj;
+          }
+          return undefined;
+        }
+
+        function docToObj(doc) {
+          const obj = {};
+          for (const [k, v] of Object.entries(doc.fields || {})) obj[k] = fv(v);
+          return obj;
+        }
+
+        // ── FCM v1 send ─────────────────────────────────────────────────────────
+        async function sendFCM(fcmToken, title, body, token) {
+          const payload = JSON.stringify({
+            message: {
+              token: fcmToken,
+              notification: { title, body },
+              android: {
+                priority: 'high',
+                notification: { channel_id: 'scadenze_channel', sound: 'default' },
+              },
+            }
+          });
+          return new Promise((resolve, reject) => {
+            const req = https.request({
+              hostname: 'fcm.googleapis.com',
+              path: `/v1/projects/${PROJECT_ID}/messages:send`,
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload),
+              },
+            }, res => {
+              let data = '';
+              res.on('data', c => data += c);
+              res.on('end', () => {
+                const parsed = JSON.parse(data);
+                if (res.statusCode !== 200) {
+                  console.error(`  ⚠️ FCM errore ${res.statusCode}:`, JSON.stringify(parsed));
+                  return resolve({ ok: false, error: parsed });
+                }
+                resolve({ ok: true, name: parsed.name });
+              });
+            });
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
+          });
+        }
+
+        // ── Calcolo giorni mancanti ─────────────────────────────────────────────
+        function daysUntil(dateStr) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const due = new Date(dateStr);
+          due.setHours(0, 0, 0, 0);
+          return Math.round((due - today) / 86400000);
+        }
+
+        // ── Main ────────────────────────────────────────────────────────────────
+        async function main() {
+          console.log('🚀 Avvio invio notifiche push -', new Date().toISOString());
+
+          let accessToken;
+          try {
+            accessToken = await getAccessToken(SA);
+            console.log('✅ Token Google ottenuto');
+          } catch (e) {
+            console.error('❌ Errore autenticazione service account:', e.message);
+            process.exit(1);
+          }
+
+          // Leggi tutti gli utenti
+          let usersResp;
+          try {
+            usersResp = await firestoreGet('users', accessToken);
+          } catch (e) {
+            console.error('❌ Errore lettura Firestore:', e.message);
+            process.exit(1);
+          }
+
+          const userDocs = usersResp.documents || [];
+          console.log(`📋 Utenti trovati: ${userDocs.length}`);
+
+          let totalSent = 0;
+          let totalSkipped = 0;
+
+          for (const userDoc of userDocs) {
+            const user = docToObj(userDoc);
+            const email = user.email;
+            const fcmToken = user.fcmToken;
+            const enablePush = user.enablePush;
+            const notifyDays = Array.isArray(user.notifyDays) ? user.notifyDays : [3, 1, 0];
+
+            if (!fcmToken || !enablePush) {
+              console.log(`  ⏭️  ${email || 'sconosciuto'}: push disabilitato o token assente`);
+              totalSkipped++;
+              continue;
+            }
+
+            // Leggi scadenze dell'utente
+            const userDocId = userDoc.name.split('/').pop();
+            let paymentsResp;
+            try {
+              paymentsResp = await firestoreGet(`users/${userDocId}/payments`, accessToken);
+            } catch (e) {
+              console.error(`  ❌ Errore lettura scadenze per ${email}:`, e.message);
+              continue;
+            }
+
+            const payments = (paymentsResp.documents || []).map(docToObj);
+            const pending = payments.filter(p => !p.paid);
+
+            console.log(`\n👤 ${email}: ${pending.length} scadenze attive`);
+
+            for (const p of pending) {
+              if (!p.dueDate) continue;
+              const days = daysUntil(p.dueDate);
+
+              if (!notifyDays.includes(days)) continue;
+
+              // Manda push
+              let title, body;
+              if (days === 0) {
+                title = `⚠️ Scadenza OGGI: ${p.title}`;
+                body  = `€${Number(p.amount || 0).toFixed(2)} - Scade oggi!`;
+              } else if (days === 1) {
+                title = `🔔 Scadenza domani: ${p.title}`;
+                body  = `€${Number(p.amount || 0).toFixed(2)} - Manca 1 giorno`;
+              } else {
+                title = `📅 Scadenza tra ${days} giorni: ${p.title}`;
+                body  = `€${Number(p.amount || 0).toFixed(2)} - Scade tra ${days} giorni`;
+              }
+
+              console.log(`  📲 Invio push → "${title}"`);
+              const result = await sendFCM(fcmToken, title, body, accessToken);
+              if (result.ok) {
+                console.log(`  ✅ Inviata: ${result.name}`);
+                totalSent++;
+              }
+            }
+          }
+
+          console.log(`\n📊 Riepilogo:`);
+          console.log(`   Push inviate: ${totalSent}`);
+          console.log(`   Utenti saltati: ${totalSkipped}`);
+          console.log('🏁 Fine esecuzione -', new Date().toISOString());
+        }
+
+        main().catch(e => { console.error('❌ Errore fatale:', e); process.exit(1); });
+        SCRIPT_EOF
+
+    - name: Run notification script
+      env:
+        FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        FIREBASE_SERVICE_ACCOUNT_B64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_B64 }}
+      run: node send-notifications.js
