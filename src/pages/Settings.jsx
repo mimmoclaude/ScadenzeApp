@@ -1,4 +1,5 @@
 import { setSetting } from '../db';
+import { Capacitor } from '@capacitor/core';
 
 const inp = {width:"100%",border:"1.5px solid #E2E8F0",borderRadius:11,padding:"12px 13px",fontSize:15,outline:"none",background:"#F8FAFC",color:"#1E293B",WebkitAppearance:"none"};
 const btn = (bg,col,ex={}) => ({background:bg,color:col,border:"none",borderRadius:13,padding:"14px",fontWeight:700,fontSize:15,cursor:"pointer",width:"100%",...ex});
@@ -17,26 +18,58 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
       exportDate: new Date().toISOString()
     };
     const json = JSON.stringify(data, null, 2);
+    const filename = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
+
+    if (Capacitor.isNativePlatform()) {
+      // Android WebView: l'anchor download non funziona → usa Web Share API
+      try {
+        const blob = new Blob([json], { type: 'application/json' });
+        const file = new File([blob], filename, { type: 'application/json' });
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'ScadenzeApp Backup', text: 'Backup scadenze' });
+          return;
+        }
+      } catch (e) {
+        if (e?.name === 'AbortError') return; // utente ha annullato la condivisione
+        console.error('[Export share]', e);
+      }
+      // Fallback: copia JSON negli appunti
+      try {
+        await navigator.clipboard.writeText(json);
+        alert('✅ JSON copiato negli appunti!\nIncollalo in un file .json sul PC.');
+      } catch {
+        alert('⚠️ Export non supportato su questo dispositivo.');
+      }
+      return;
+    }
+
+    // Web browser: metodo classico con anchor
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Reset input per permettere re-selezione dello stesso file
+    e.target.value = '';
     try {
       const text = await file.text();
       const data = JSON.parse(text);
+      if (!data.payments) throw new Error('Formato non valido');
       setPayments(data.payments);
-      if (data.settings.gClientId) setClientId(data.settings.gClientId);
-      if (data.settings.notifEmail) setNotifEmail(data.settings.notifEmail);
-    } catch {
-      alert('Errore importazione file');
+      if (data.settings?.gClientId) setClientId(data.settings.gClientId);
+      if (data.settings?.notifEmail) setNotifEmail(data.settings.notifEmail);
+      alert(`✅ Importate ${data.payments.length} scadenze`);
+    } catch(err) {
+      alert('❌ Errore importazione: ' + (err.message || 'file non valido'));
     }
   };
 
@@ -156,10 +189,13 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
       {/* Data Management */}
       <div className="card" style={{padding:18,marginBottom:12}}>
         <div style={{fontWeight:700,fontSize:15,color:"#1E293B",marginBottom:12}}>💾 Gestione dati</div>
-        <button onClick={handleExport} style={{...btn("#4285F4","#fff"),marginBottom:10,WebkitTapHighlightColor:"transparent"}}>📥 Esporta backup JSON</button>
-        <label style={{display:"block"}}>
+        <button onClick={handleExport} style={{...btn("#4285F4","#fff"),marginBottom:10,WebkitTapHighlightColor:"transparent"}}>
+          📥 Esporta backup JSON
+        </button>
+        {/* Label wrappa direttamente l'input: funziona in Android WebView senza JS click */}
+        <label style={{...btn("#10B981","#fff"),display:"block",textAlign:"center",WebkitTapHighlightColor:"transparent",cursor:"pointer",boxSizing:"border-box"}}>
           <input type="file" accept=".json" onChange={handleImport} style={{display:"none"}}/>
-          <button onClick={e=>e.currentTarget.parentElement.querySelector('input').click()} style={{...btn("#10B981","#fff"),WebkitTapHighlightColor:"transparent"}}>📤 Importa backup JSON</button>
+          📤 Importa backup JSON
         </label>
       </div>
 
