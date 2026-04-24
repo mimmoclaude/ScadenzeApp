@@ -46,6 +46,66 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Generate Android app icons from SVG (icon #9 - Calendario + Check)
+      run: |
+        sudo apt-get install -y librsvg2-bin imagemagick 2>/dev/null | tail -3
+
+        ICON_SVG="resources/icon.svg"
+
+        if [ ! -f "$ICON_SVG" ]; then
+          echo "⚠️ $ICON_SVG non trovato - skip generazione icone"
+        else
+          echo "✅ Trovato $ICON_SVG - generazione icone Android..."
+
+          # Coppie: directory → dimensione px
+          declare -A SIZES=(
+            ["mipmap-mdpi"]=48
+            ["mipmap-hdpi"]=72
+            ["mipmap-xhdpi"]=96
+            ["mipmap-xxhdpi"]=144
+            ["mipmap-xxxhdpi"]=192
+          )
+
+          for dir in "${!SIZES[@]}"; do
+            SIZE="${SIZES[$dir]}"
+            DEST="android/app/src/main/res/$dir"
+            mkdir -p "$DEST"
+
+            # Icona quadrata standard
+            rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o "$DEST/ic_launcher.png"
+            echo "  ✓ $dir/ic_launcher.png (${SIZE}x${SIZE})"
+
+            # Icona round: applica maschera circolare con ImageMagick
+            rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o /tmp/icon_tmp.png
+            convert /tmp/icon_tmp.png \
+              \( +clone -alpha extract \
+                 -draw "fill black polygon 0,0 0,${SIZE} ${SIZE},${SIZE} ${SIZE},0 \
+                        fill white circle $((SIZE/2)),$((SIZE/2)) $((SIZE/2)),0" \
+                 \( +clone -flip \) -compose multiply -composite \
+                 \( +clone -flop \) -compose multiply -composite \
+              \) -alpha off -compose CopyOpacity -composite \
+              "$DEST/ic_launcher_round.png" 2>/dev/null || \
+              cp /tmp/icon_tmp.png "$DEST/ic_launcher_round.png"
+            echo "  ✓ $dir/ic_launcher_round.png (${SIZE}x${SIZE})"
+          done
+
+          # Icona foreground per adaptive icon (108dp = 432px a xxxhdpi, con padding 18%)
+          ADAPT_SIZE=432
+          ADAPT_DEST="android/app/src/main/res/drawable"
+          mkdir -p "$ADAPT_DEST"
+          rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_foreground.png"
+          echo "  ✓ drawable/ic_launcher_foreground.png (${ADAPT_SIZE}x${ADAPT_SIZE})"
+
+          # Background solido per adaptive icon
+          convert -size ${ADAPT_SIZE}x${ADAPT_SIZE} \
+            gradient:"#6366F1-#312E81" \
+            "$ADAPT_DEST/ic_launcher_background.png" 2>/dev/null || \
+            rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_background.png"
+          echo "  ✓ drawable/ic_launcher_background.png (background gradient)"
+
+          echo "✅ Tutte le icone generate con successo"
+        fi
+
     - name: Inject google-services.json from GitHub Secret (FCM/Firebase)
       run: |
         DEST="android/app/google-services.json"

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Scegli Icona — ScadenzeApp</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#E8EDF8;padding:24px;min-height:100vh}
+  h1{text-align:center;color:#1E293B;font-size:20px;margin-bottom:6px}
+  p{text-align:center;color:#64748B;font-size:13px;margin-bottom:24px}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;max-width:700px;margin:0 auto}
+  .card{background:#fff;border-radius:20px;padding:18px 10px 14px;text-align:center;cursor:pointer;border:2.5px solid transparent;box-shadow:0 2px 10px rgba(0,0,0,0.07);transition:all .18s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.13)}
+  .card.selected{border-color:#4285F4;box-shadow:0 0 0 4px rgba(66,133,244,0.18)}
+  .card svg{display:block;margin:0 auto 10px}
+  .label{font-size:11px;color:#475569;font-weight:600}
+  .num{font-size:10px;color:#94A3B8;margin-top:3px}
+  .badge{display:none;position:absolute;top:-8px;right:-8px;background:#4285F4;color:#fff;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;align-items:center;justify-content:center}
+  .card{position:relative}
+  .card.selected .badge{display:flex}
+  .footer{max-width:700px;margin:24px auto 0;background:#fff;border-radius:16px;padding:16px 20px;font-size:13px;color:#374151}
+  .footer strong{color:#1E293B}
+  @media(max-width:500px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<h1>🎨 Scegli l'icona per ScadenzeApp</h1>
+<p>Clicca su un'icona per selezionarla • Dimensione reale: 1024×1024px</p>
+
+<div class="grid">
+
+  <!-- 1: Calendario con campanella -->
+  <div class="card" onclick="select(this,1)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g1)"/>
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#4285F4"/><stop offset="1" stop-color="#1565C0"/></linearGradient></defs>
+      <rect x="14" y="22" width="52" height="40" rx="7" fill="#fff" fill-opacity=".15"/>
+      <rect x="14" y="22" width="52" height="40" rx="7" fill="none" stroke="#fff" stroke-width="2.5"/>
+      <rect x="14" y="22" width="52" height="14" rx="7" fill="#fff" fill-opacity=".25"/>
+      <rect x="14" y="29" width="52" height="7" fill="#fff" fill-opacity=".25"/>
+      <line x1="26" y1="18" x2="26" y2="28" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="54" y1="18" x2="54" y2="28" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <text x="40" y="54" text-anchor="middle" fill="#fff" font-size="18" font-weight="800" font-family="Arial">31</text>
+      <!-- campanella -->
+      <circle cx="57" cy="26" r="9" fill="#FBC02D"/>
+      <path d="M52 26 Q57 20 62 26 Q62 31 57 33 Q52 31 52 26Z" fill="#F57F17"/>
+      <circle cx="57" cy="34" r="2" fill="#F57F17"/>
+    </svg>
+    <div class="label">Calendario</div>
+    <div class="num">#1</div>
+  </div>
+
+  <!-- 2: Portafoglio con euro -->
+  <div class="card" onclick="select(this,2)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g2)"/>
+      <defs><linearGradient id="g2" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#10B981"/><stop offset="1" stop-color="#065F46"/></linearGradient></defs>
+      <!-- portafoglio -->
+      <rect x="12" y="26" width="48" height="30" rx="7" fill="#fff" fill-opacity=".18"/>
+      <rect x="12" y="26" width="48" height="30" rx="7" fill="none" stroke="#fff" stroke-width="2.5"/>
+      <rect x="12" y="26" width="48" height="10" rx="5" fill="#fff" fill-opacity=".3"/>
+      <!-- tasca -->
+      <rect x="44" y="34" width="18" height="14" rx="5" fill="#fff" fill-opacity=".35"/>
+      <circle cx="53" cy="41" r="4" fill="#fff" fill-opacity=".7"/>
+      <!-- € -->
+      <text x="28" y="46" text-anchor="middle" fill="#fff" font-size="20" font-weight="800" font-family="Arial">€</text>
+    </svg>
+    <div class="label">Portafoglio</div>
+    <div class="num">#2</div>
+  </div>
+
+  <!-- 3: Orologio scadenza -->
+  <div class="card" onclick="select(this,3)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g3)"/>
+      <defs><linearGradient id="g3" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#EF4444"/><stop offset="1" stop-color="#991B1B"/></linearGradient></defs>
+      <circle cx="40" cy="42" r="24" fill="#fff" fill-opacity=".18"/>
+      <circle cx="40" cy="42" r="24" fill="none" stroke="#fff" stroke-width="2.5"/>
+      <circle cx="40" cy="42" r="2.5" fill="#fff"/>
+      <!-- lancette -->
+      <line x1="40" y1="42" x2="40" y2="25" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="40" y1="42" x2="54" y2="50" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <!-- corona orologio -->
+      <rect x="37" y="16" width="6" height="5" rx="2" fill="#fff" fill-opacity=".7"/>
+      <!-- ! urgenza -->
+      <circle cx="58" cy="22" r="9" fill="#FBC02D"/>
+      <text x="58" y="27" text-anchor="middle" fill="#fff" font-size="13" font-weight="900" font-family="Arial">!</text>
+    </svg>
+    <div class="label">Scadenza</div>
+    <div class="num">#3</div>
+  </div>
+
+  <!-- 4: Fattura/ricevuta -->
+  <div class="card" onclick="select(this,4)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g4)"/>
+      <defs><linearGradient id="g4" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#8B5CF6"/><stop offset="1" stop-color="#4C1D95"/></linearGradient></defs>
+      <!-- foglio fattura -->
+      <path d="M22 16 L58 16 L58 64 L22 64 L22 16Z" rx="5" fill="#fff" fill-opacity=".18"/>
+      <path d="M22 16 L58 16 L58 64 L22 64 Z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- angolo piegato -->
+      <path d="M48 16 L58 26 L48 26 Z" fill="#fff" fill-opacity=".25"/>
+      <!-- righe testo -->
+      <line x1="29" y1="34" x2="51" y2="34" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="29" y1="42" x2="51" y2="42" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- importo -->
+      <text x="40" y="57" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="Arial">€ 128,00</text>
+    </svg>
+    <div class="label">Fattura</div>
+    <div class="num">#4</div>
+  </div>
+
+  <!-- 5: Campanella notifica -->
+  <div class="card" onclick="select(this,5)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g5)"/>
+      <defs><linearGradient id="g5" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#F59E0B"/><stop offset="1" stop-color="#92400E"/></linearGradient></defs>
+      <!-- campana -->
+      <path d="M40 16 C27 16 20 26 20 36 L20 50 L60 50 L60 36 C60 26 53 16 40 16Z" fill="#fff" fill-opacity=".25"/>
+      <path d="M40 16 C27 16 20 26 20 36 L20 50 L60 50 L60 36 C60 26 53 16 40 16Z" fill="none" stroke="#fff" stroke-width="2.5"/>
+      <!-- boccio -->
+      <line x1="30" y1="50" x2="50" y2="50" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="40" cy="56" r="5" fill="#fff" fill-opacity=".8"/>
+      <!-- stanghetta -->
+      <line x1="40" y1="12" x2="40" y2="17" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <!-- pallino punto -->
+      <circle cx="55" cy="23" r="8" fill="#EF4444"/>
+      <text x="55" y="27" text-anchor="middle" fill="#fff" font-size="10" font-weight="800" font-family="Arial">3</text>
+    </svg>
+    <div class="label">Notifica</div>
+    <div class="num">#5</div>
+  </div>
+
+  <!-- 6: Grafico a barre pagamenti -->
+  <div class="card" onclick="select(this,6)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g6)"/>
+      <defs><linearGradient id="g6" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#0EA5E9"/><stop offset="1" stop-color="#0C4A6E"/></linearGradient></defs>
+      <!-- assi -->
+      <line x1="16" y1="58" x2="64" y2="58" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="20" x2="16" y2="58" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- barre -->
+      <rect x="22" y="44" width="9" height="14" rx="3" fill="#fff" fill-opacity=".5"/>
+      <rect x="34" y="34" width="9" height="24" rx="3" fill="#fff" fill-opacity=".75"/>
+      <rect x="46" y="26" width="9" height="32" rx="3" fill="#fff"/>
+      <!-- freccia trend -->
+      <polyline points="22,48 34,38 46,30" fill="none" stroke="#FBC02D" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+    <div class="label">Statistiche</div>
+    <div class="num">#6</div>
+  </div>
+
+  <!-- 7: Scudo protezione -->
+  <div class="card" onclick="select(this,7)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g7)"/>
+      <defs><linearGradient id="g7" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#14B8A6"/><stop offset="1" stop-color="#134E4A"/></linearGradient></defs>
+      <!-- scudo -->
+      <path d="M40 16 L60 24 L60 44 C60 54 40 64 40 64 C40 64 20 54 20 44 L20 24 Z" fill="#fff" fill-opacity=".2"/>
+      <path d="M40 16 L60 24 L60 44 C60 54 40 64 40 64 C40 64 20 54 20 44 L20 24 Z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- check -->
+      <polyline points="30,42 37,49 52,34" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="label">Protezione</div>
+    <div class="num">#7</div>
+  </div>
+
+  <!-- 8: Monete stack -->
+  <div class="card" onclick="select(this,8)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g8)"/>
+      <defs><linearGradient id="g8" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#F97316"/><stop offset="1" stop-color="#7C2D12"/></linearGradient></defs>
+      <!-- monete impilate -->
+      <ellipse cx="40" cy="57" rx="20" ry="6" fill="#FBC02D"/>
+      <rect x="20" y="49" width="40" height="8" fill="#FBC02D"/>
+      <ellipse cx="40" cy="49" rx="20" ry="6" fill="#F59E0B"/>
+      <rect x="20" y="41" width="40" height="8" fill="#F59E0B"/>
+      <ellipse cx="40" cy="41" rx="20" ry="6" fill="#FBBF24"/>
+      <rect x="20" y="33" width="40" height="8" fill="#FBBF24"/>
+      <ellipse cx="40" cy="33" rx="20" ry="6" fill="#FCD34D"/>
+      <text x="40" y="37" text-anchor="middle" fill="#92400E" font-size="11" font-weight="800" font-family="Arial">€€€</text>
+    </svg>
+    <div class="label">Pagamenti</div>
+    <div class="num">#8</div>
+  </div>
+
+  <!-- 9: Calendario + check verde -->
+  <div class="card" onclick="select(this,9)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g9)"/>
+      <defs><linearGradient id="g9" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse"><stop stop-color="#6366F1"/><stop offset="1" stop-color="#312E81"/></linearGradient></defs>
+      <rect x="14" y="20" width="52" height="44" rx="8" fill="#fff" fill-opacity=".15"/>
+      <rect x="14" y="20" width="52" height="44" rx="8" fill="none" stroke="#fff" stroke-width="2.5"/>
+      <rect x="14" y="20" width="52" height="16" rx="8" fill="#fff" fill-opacity=".25"/>
+      <rect x="14" y="28" width="52" height="8" fill="#fff" fill-opacity=".25"/>
+      <line x1="27" y1="16" x2="27" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="53" y1="16" x2="53" y2="26" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <!-- check grande al centro -->
+      <circle cx="40" cy="50" r="14" fill="#10B981" fill-opacity=".9"/>
+      <polyline points="33,50 38,55 48,44" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="label">Pagato ✓</div>
+    <div class="num">#9</div>
+  </div>
+
+  <!-- 10: Rocket / moderno -->
+  <div class="card" onclick="select(this,10)">
+    <span class="badge">✓</span>
+    <svg width="80" height="80" viewBox="0 0 80 80">
+      <rect width="80" height="80" rx="18" fill="url(#g10)"/>
+      <defs>
+        <linearGradient id="g10" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#EC4899"/>
+          <stop offset="0.5" stop-color="#8B5CF6"/>
+          <stop offset="1" stop-color="#3B82F6"/>
+        </linearGradient>
+      </defs>
+      <!-- calendario stilizzato moderno -->
+      <rect x="13" y="18" width="54" height="46" rx="10" fill="#fff" fill-opacity=".12"/>
+      <rect x="13" y="18" width="54" height="18" rx="10" fill="#fff" fill-opacity=".22"/>
+      <rect x="13" y="28" width="54" height="8" fill="#fff" fill-opacity=".22"/>
+      <rect x="13" y="18" width="54" height="46" rx="10" fill="none" stroke="#fff" stroke-width="2"/>
+      <line x1="28" y1="14" x2="28" y2="24" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <line x1="52" y1="14" x2="52" y2="24" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+      <!-- S grande al centro -->
+      <text x="40" y="54" text-anchor="middle" fill="#fff" font-size="26" font-weight="900" font-family="Arial,sans-serif" letter-spacing="-1">S</text>
+    </svg>
+    <div class="label">Minimal S</div>
+    <div class="num">#10</div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <strong>📌 Selezionata:</strong> <span id="sel">Nessuna — clicca su un'icona sopra</span><br/>
+  <span style="color:#94A3B8;font-size:11px;margin-top:4px;display:block">Dopo la scelta l'icona verrà generata nelle dimensioni Android richieste (48 → 192 px) e aggiunta alla build.</span>
+</div>
+
+<script>
+let current = null;
+function select(el, n) {
+  if (current) current.classList.remove('selected');
+  current = el;
+  el.classList.add('selected');
+  const names = ['','Calendario + Campanella','Portafoglio €','Orologio Scadenza','Fattura','Campanella Notifica','Grafico Statistiche','Scudo Protezione','Monete Stack','Calendario + Check','Minimal S'];
+  document.getElementById('sel').textContent = `#${n} — ${names[n]}`;
+}
+</script>
+</body>
+</html>
