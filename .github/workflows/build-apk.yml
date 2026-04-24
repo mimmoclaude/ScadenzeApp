@@ -236,22 +236,17 @@ jobs:
           echo "✅ google-services.json reale trovato - applico Firebase Gradle plugin..."
 
           # Aggiungi classpath nel blocco buildscript.dependencies del root build.gradle
+          # awk one-liner: inserisce la riga classpath subito dopo la prima occorrenza di
+          # 'dependencies {' che appare DOPO la riga 'buildscript {'
           if ! grep -q "google-services" "$ROOT_GRADLE"; then
-            # Pattern più sicuro: cerca 'buildscript' poi la prima 'dependencies {'
-            python3 - << 'PYEOF'
-import re, sys
-with open('android/build.gradle', 'r') as f:
-    content = f.read()
-# Inserisce classpath DENTRO il blocco buildscript { dependencies { ... } }
-patched = re.sub(
-    r'(buildscript\s*\{[^}]*?dependencies\s*\{)',
-    r"\1\n        classpath 'com.google.gms:google-services:4.4.0'",
-    content, count=1, flags=re.DOTALL
-)
-with open('android/build.gradle', 'w') as f:
-    f.write(patched)
-print('✅ google-services classpath aggiunto a buildscript.dependencies')
-PYEOF
+            awk '
+              /buildscript/ { in_buildscript=1 }
+              in_buildscript && /dependencies[[:space:]]*\{/ && !done {
+                print; print "        classpath '\''com.google.gms:google-services:4.4.0'\''"; done=1; next
+              }
+              { print }
+            ' "$ROOT_GRADLE" > "${ROOT_GRADLE}.tmp" && mv "${ROOT_GRADLE}.tmp" "$ROOT_GRADLE"
+            echo "✅ google-services classpath aggiunto a buildscript.dependencies"
           else
             echo "ℹ️ google-services classpath già presente"
           fi
