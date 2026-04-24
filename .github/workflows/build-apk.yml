@@ -131,7 +131,7 @@ jobs:
         else
           echo "⚠️ GOOGLE_SERVICES_JSON_B64 non impostato - FCM disabilitato in questa build"
           # Crea un google-services.json minimo placeholder per permettere la compilazione
-          cat > "$DEST" << 'PLACEHOLDER_EOF'
+          cat > "$DEST" <<- 'PLACEHOLDER_EOF'
         {
           "project_info": {
             "project_number": "000000000000",
