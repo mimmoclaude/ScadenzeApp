@@ -31,11 +31,13 @@ jobs:
     - name: Build web app
       run: npm run build
 
-    - name: Install Capacitor CLI globally
-      run: npm install -g @capacitor/cli
-
-    - name: Install Capacitor dependencies
-      run: npm install @capacitor/core @capacitor/android --save-dev
+    - name: Verify Capacitor versions are consistent
+      run: |
+        echo "=== Installed Capacitor packages ==="
+        npm list --depth=0 2>/dev/null | grep -i capacitor || true
+        echo ""
+        echo "=== Capacitor CLI version ==="
+        npx cap --version
 
     - name: Add Android platform
       run: npx cap add android || true
