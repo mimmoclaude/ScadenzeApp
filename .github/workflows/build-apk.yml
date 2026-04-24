@@ -192,8 +192,8 @@ jobs:
             keyPassword 'android'
         }
     }
-SIGNING_EOF
-)
+        SIGNING_EOF
+        )
         # Replace placeholder with actual path
         SIGNING_BLOCK="${SIGNING_BLOCK//KEYSTORE_PATH_PLACEHOLDER/$KEYSTORE_ABS}"
         # Remove any existing signingConfigs block (simple case: single block)
