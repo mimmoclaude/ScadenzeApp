@@ -182,8 +182,20 @@ jobs:
         BUILD_GRADLE="android/app/build.gradle"
         echo "=== BEFORE PATCH ==="
         cat "$BUILD_GRADLE"
-        # Create the signing config block with proper newlines (use $'...' for escape sequences)
-        SIGNING_BLOCK=$'    signingConfigs {\n        debug {\n            storeFile file(\''"${KEYSTORE_ABS}"$'\'\')\n            storePassword \'android\'\n            keyAlias \'androiddebugkey\'\n            keyPassword \'android\'\n        }\n    }\n'
+        # Create the signing config block with proper newlines (use heredoc for clarity)
+        SIGNING_BLOCK=$(cat <<'SIGNING_EOF'
+    signingConfigs {
+        debug {
+            storeFile file('KEYSTORE_PATH_PLACEHOLDER')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+SIGNING_EOF
+)
+        # Replace placeholder with actual path
+        SIGNING_BLOCK="${SIGNING_BLOCK//KEYSTORE_PATH_PLACEHOLDER/$KEYSTORE_ABS}"
         # Remove any existing signingConfigs block (simple case: single block)
         # Then inject the new one before buildTypes
         if grep -q "signingConfigs" "$BUILD_GRADLE"; then
