@@ -276,14 +276,61 @@ jobs:
         echo "=== Root build.gradle (prime 30 righe) ==="
         head -30 "$ROOT_GRADLE"
 
-    - name: Build APK (Debug)
+    - name: Show Android project files (pre-build)
+      run: |
+        echo "=== android/build.gradle (root) ==="
+        cat android/build.gradle 2>/dev/null || echo "NOT FOUND"
+        echo ""
+        echo "=== android/app/build.gradle ==="
+        cat android/app/build.gradle 2>/dev/null || echo "NOT FOUND"
+        echo ""
+        echo "=== android/variables.gradle ==="
+        cat android/variables.gradle 2>/dev/null || echo "NOT FOUND"
+        echo ""
+        echo "=== android/gradle/wrapper/gradle-wrapper.properties ==="
+        cat android/gradle/wrapper/gradle-wrapper.properties 2>/dev/null || echo "NOT FOUND"
+        echo ""
+        echo "=== android/capacitor.settings.gradle ==="
+        cat android/capacitor.settings.gradle 2>/dev/null || echo "NOT FOUND"
+
+    - name: Build APK (Debug) with full diagnostics
+      id: build_apk
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew clean
-        ./gradlew assembleDebug -x lint
+        ./gradlew clean 2>&1 | tee /tmp/gradle-clean.log
+        # Use --stacktrace --info for verbose output, redirect ALL output
+        set -o pipefail
+        ./gradlew assembleDebug -x lint --stacktrace --info 2>&1 | tee /tmp/gradle-build.log
+      continue-on-error: true
+
+    - name: Show Gradle error tail (always)
+      if: always()
+      run: |
+        echo "=== LAST 200 LINES OF GRADLE BUILD LOG ==="
+        tail -200 /tmp/gradle-build.log 2>/dev/null || echo "No build log"
+        echo ""
+        echo "=== ERRORS / WARNINGS / EXCEPTIONS ==="
+        grep -iE "FAILED|ERROR|Exception|error:|Could not|Unable to" /tmp/gradle-build.log 2>/dev/null | head -50 || echo "No matches"
+
+    - name: Upload Gradle logs (always)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-logs
+        path: |
+          /tmp/gradle-clean.log
+          /tmp/gradle-build.log
+        retention-days: 7
+
+    - name: Fail if APK build failed
+      if: steps.build_apk.outcome != 'success'
+      run: |
+        echo "❌ Gradle build failed - see 'Show Gradle error tail' step above"
+        exit 1
 
     - name: Verify APK signature SHA-1
+      if: steps.build_apk.outcome == 'success'
       run: |
         APK="android/app/build/outputs/apk/debug/app-debug.apk"
         echo "=== APK location: $APK ==="
@@ -293,6 +340,7 @@ jobs:
         echo "=== Expected SHA-1: E1:7D:7F:18:34:BB:90:43:F3:19:FD:0B:2F:9F:19:C4:A8:1E:F9:17 ==="
 
     - name: Upload APK to artifacts
+      if: steps.build_apk.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
