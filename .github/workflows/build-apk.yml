@@ -182,8 +182,8 @@ jobs:
         BUILD_GRADLE="android/app/build.gradle"
         echo "=== BEFORE PATCH ==="
         cat "$BUILD_GRADLE"
-        # Create the signing config block using envsubst-safe placeholder
-        SIGNING_BLOCK="    signingConfigs {\n        debug {\n            storeFile file('${KEYSTORE_ABS}')\n            storePassword 'android'\n            keyAlias 'androiddebugkey'\n            keyPassword 'android'\n        }\n    }\n"
+        # Create the signing config block with proper newlines (use $'...' for escape sequences)
+        SIGNING_BLOCK=$'    signingConfigs {\n        debug {\n            storeFile file(\''"${KEYSTORE_ABS}"$'\'\')\n            storePassword \'android\'\n            keyAlias \'androiddebugkey\'\n            keyPassword \'android\'\n        }\n    }\n'
         # Remove any existing signingConfigs block (simple case: single block)
         # Then inject the new one before buildTypes
         if grep -q "signingConfigs" "$BUILD_GRADLE"; then
@@ -204,12 +204,15 @@ jobs:
         # Ensure debug buildType references signingConfigs.debug
         if ! grep -q "signingConfig signingConfigs.debug" "$BUILD_GRADLE"; then
           echo "Adding signingConfig signingConfigs.debug to debug buildType"
-          # Inject into existing debug block, or create one
-          if awk '/buildTypes[[:space:]]*\{/,/^[[:space:]]*\}[[:space:]]*$/' "$BUILD_GRADLE" | grep -q "debug[[:space:]]*{"; then
-            sed -i '/buildTypes[[:space:]]*{/,/^[[:space:]]*}[[:space:]]*$/ s/debug[[:space:]]*{/debug {\n            signingConfig signingConfigs.debug/' "$BUILD_GRADLE"
-          else
-            sed -i 's|buildTypes[[:space:]]*{|buildTypes {\n        debug {\n            signingConfig signingConfigs.debug\n        }|' "$BUILD_GRADLE"
-          fi
+          # Use awk to inject the signingConfig into the debug block
+          awk '
+            /buildTypes[[:space:]]*\{/ { in_buildtypes=1 }
+            in_buildtypes && /debug[[:space:]]*\{/ && !sig_injected {
+              print; print "            signingConfig signingConfigs.debug"; sig_injected=1; next
+            }
+            { print }
+          ' "$BUILD_GRADLE" > "${BUILD_GRADLE}.tmp" && mv "${BUILD_GRADLE}.tmp" "$BUILD_GRADLE"
+          echo "✅ signingConfig aggiunto al blocco debug buildType"
         fi
         echo "=== AFTER PATCH ==="
         cat "$BUILD_GRADLE"
