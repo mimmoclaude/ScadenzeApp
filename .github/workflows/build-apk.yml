@@ -48,63 +48,77 @@ jobs:
 
     - name: Generate Android app icons from SVG (icon #9 - Calendario + Check)
       run: |
-        sudo apt-get install -y librsvg2-bin imagemagick 2>/dev/null | tail -3
+        # Installa strumenti (output silenzioso, ma controlla se disponibili dopo)
+        sudo apt-get install -y librsvg2-bin imagemagick -q > /dev/null 2>&1 || true
 
         ICON_SVG="resources/icon.svg"
 
         if [ ! -f "$ICON_SVG" ]; then
           echo "⚠️ $ICON_SVG non trovato - skip generazione icone"
-        else
-          echo "✅ Trovato $ICON_SVG - generazione icone Android..."
+          exit 0
+        fi
 
-          # Coppie: directory → dimensione px
-          declare -A SIZES=(
-            ["mipmap-mdpi"]=48
-            ["mipmap-hdpi"]=72
-            ["mipmap-xhdpi"]=96
-            ["mipmap-xxhdpi"]=144
-            ["mipmap-xxxhdpi"]=192
-          )
+        if ! command -v rsvg-convert > /dev/null 2>&1; then
+          echo "⚠️ rsvg-convert non disponibile - skip generazione icone"
+          exit 0
+        fi
 
-          for dir in "${!SIZES[@]}"; do
-            SIZE="${SIZES[$dir]}"
-            DEST="android/app/src/main/res/$dir"
-            mkdir -p "$DEST"
+        echo "✅ Trovato $ICON_SVG + rsvg-convert - generazione icone Android..."
 
-            # Icona quadrata standard
-            rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o "$DEST/ic_launcher.png"
-            echo "  ✓ $dir/ic_launcher.png (${SIZE}x${SIZE})"
+        # Array esplicito (compatibile con bash non-associativo)
+        DIRS="mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi"
+        SIZES="48 72 96 144 192"
 
-            # Icona round: applica maschera circolare con ImageMagick
-            rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o /tmp/icon_tmp.png
+        DIR_ARR=($DIRS)
+        SIZE_ARR=($SIZES)
+
+        for i in 0 1 2 3 4; do
+          dir="${DIR_ARR[$i]}"
+          SIZE="${SIZE_ARR[$i]}"
+          DEST="android/app/src/main/res/$dir"
+          mkdir -p "$DEST"
+
+          # Icona quadrata standard
+          rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o "$DEST/ic_launcher.png"
+          echo "  ✓ $dir/ic_launcher.png (${SIZE}x${SIZE})"
+
+          # Icona round: maschera circolare oppure copia semplice come fallback
+          rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o /tmp/icon_tmp.png
+          if command -v convert > /dev/null 2>&1; then
             convert /tmp/icon_tmp.png \
               \( +clone -alpha extract \
                  -draw "fill black polygon 0,0 0,${SIZE} ${SIZE},${SIZE} ${SIZE},0 \
                         fill white circle $((SIZE/2)),$((SIZE/2)) $((SIZE/2)),0" \
-                 \( +clone -flip \) -compose multiply -composite \
-                 \( +clone -flop \) -compose multiply -composite \
+                 \( +clone -flip \) -compose Multiply -composite \
+                 \( +clone -flop \) -compose Multiply -composite \
               \) -alpha off -compose CopyOpacity -composite \
-              "$DEST/ic_launcher_round.png" 2>/dev/null || \
-              cp /tmp/icon_tmp.png "$DEST/ic_launcher_round.png"
-            echo "  ✓ $dir/ic_launcher_round.png (${SIZE}x${SIZE})"
-          done
+              "$DEST/ic_launcher_round.png" 2>/dev/null \
+            || cp /tmp/icon_tmp.png "$DEST/ic_launcher_round.png"
+          else
+            cp /tmp/icon_tmp.png "$DEST/ic_launcher_round.png"
+          fi
+          echo "  ✓ $dir/ic_launcher_round.png (${SIZE}x${SIZE})"
+        done
 
-          # Icona foreground per adaptive icon (108dp = 432px a xxxhdpi, con padding 18%)
-          ADAPT_SIZE=432
-          ADAPT_DEST="android/app/src/main/res/drawable"
-          mkdir -p "$ADAPT_DEST"
-          rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_foreground.png"
-          echo "  ✓ drawable/ic_launcher_foreground.png (${ADAPT_SIZE}x${ADAPT_SIZE})"
+        # Foreground adaptive icon (432px = 108dp @ xxxhdpi)
+        ADAPT_SIZE=432
+        ADAPT_DEST="android/app/src/main/res/drawable"
+        mkdir -p "$ADAPT_DEST"
+        rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_foreground.png"
+        echo "  ✓ drawable/ic_launcher_foreground.png (${ADAPT_SIZE}x${ADAPT_SIZE})"
 
-          # Background solido per adaptive icon
+        # Background: gradiente con ImageMagick, fallback copia icona
+        if command -v convert > /dev/null 2>&1; then
           convert -size ${ADAPT_SIZE}x${ADAPT_SIZE} \
             gradient:"#6366F1-#312E81" \
-            "$ADAPT_DEST/ic_launcher_background.png" 2>/dev/null || \
-            rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_background.png"
-          echo "  ✓ drawable/ic_launcher_background.png (background gradient)"
-
-          echo "✅ Tutte le icone generate con successo"
+            "$ADAPT_DEST/ic_launcher_background.png" 2>/dev/null \
+          || rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_background.png"
+        else
+          rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_background.png"
         fi
+        echo "  ✓ drawable/ic_launcher_background.png"
+
+        echo "✅ Tutte le icone generate con successo"
 
     - name: Inject google-services.json from GitHub Secret (FCM/Firebase)
       run: |
@@ -200,30 +214,60 @@ jobs:
         echo "=== AFTER PATCH ==="
         cat "$BUILD_GRADLE"
 
-    - name: Add Firebase dependencies to Android project (for FCM)
+    - name: Add Firebase dependencies to Android project (solo con google-services.json reale)
       run: |
         ROOT_GRADLE="android/build.gradle"
         APP_GRADLE="android/app/build.gradle"
+        GSJ="android/app/google-services.json"
 
-        # Aggiungi Google Services classpath nel root build.gradle se non presente
-        if ! grep -q "google-services" "$ROOT_GRADLE"; then
-          sed -i "s|dependencies {|dependencies {\n        classpath 'com.google.gms:google-services:4.4.0'|" "$ROOT_GRADLE"
-          echo "✅ Aggiunto google-services classpath a $ROOT_GRADLE"
-        else
-          echo "ℹ️ google-services già presente in $ROOT_GRADLE"
+        # Il plugin google-services Gradle RICHIEDE un JSON valido per compilare.
+        # Se è presente solo il placeholder (project_id = "placeholder-project"),
+        # NON applicare il plugin per evitare BUILD FAILED.
+        # L'app si compilerà normalmente; FCM sarà attivo solo con il JSON reale.
+        IS_PLACEHOLDER=false
+        if grep -q '"placeholder-project"' "$GSJ" 2>/dev/null; then
+          IS_PLACEHOLDER=true
         fi
 
-        # Applica il plugin google-services all'app se non presente
-        if ! grep -q "com.google.gms.google-services" "$APP_GRADLE"; then
-          echo "" >> "$APP_GRADLE"
-          echo "apply plugin: 'com.google.gms.google-services'" >> "$APP_GRADLE"
-          echo "✅ Aggiunto 'apply plugin: com.google.gms.google-services' a $APP_GRADLE"
+        if [ "$IS_PLACEHOLDER" = "true" ]; then
+          echo "⏭️ google-services.json è un placeholder - skip Firebase Gradle plugin"
+          echo "ℹ️ Aggiungi il secret GOOGLE_SERVICES_JSON_B64 per abilitare FCM nella build"
         else
-          echo "ℹ️ google-services plugin già presente in $APP_GRADLE"
+          echo "✅ google-services.json reale trovato - applico Firebase Gradle plugin..."
+
+          # Aggiungi classpath nel blocco buildscript.dependencies del root build.gradle
+          if ! grep -q "google-services" "$ROOT_GRADLE"; then
+            # Pattern più sicuro: cerca 'buildscript' poi la prima 'dependencies {'
+            python3 - << 'PYEOF'
+import re, sys
+with open('android/build.gradle', 'r') as f:
+    content = f.read()
+# Inserisce classpath DENTRO il blocco buildscript { dependencies { ... } }
+patched = re.sub(
+    r'(buildscript\s*\{[^}]*?dependencies\s*\{)',
+    r"\1\n        classpath 'com.google.gms:google-services:4.4.0'",
+    content, count=1, flags=re.DOTALL
+)
+with open('android/build.gradle', 'w') as f:
+    f.write(patched)
+print('✅ google-services classpath aggiunto a buildscript.dependencies')
+PYEOF
+          else
+            echo "ℹ️ google-services classpath già presente"
+          fi
+
+          # Applica il plugin all'app se non presente
+          if ! grep -q "com.google.gms.google-services" "$APP_GRADLE"; then
+            echo "" >> "$APP_GRADLE"
+            echo "apply plugin: 'com.google.gms.google-services'" >> "$APP_GRADLE"
+            echo "✅ Plugin com.google.gms.google-services applicato ad app/build.gradle"
+          else
+            echo "ℹ️ Plugin già presente in app/build.gradle"
+          fi
         fi
 
-        echo "=== Root build.gradle dependencies ==="
-        grep -A5 "dependencies {" "$ROOT_GRADLE" | head -20 || true
+        echo "=== Root build.gradle (prime 30 righe) ==="
+        head -30 "$ROOT_GRADLE"
 
     - name: Build APK (Debug)
       run: |
