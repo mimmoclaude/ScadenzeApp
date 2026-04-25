@@ -31,357 +31,118 @@ jobs:
     - name: Build web app
       run: npm run build
 
-    - name: Verify Capacitor versions are consistent
-      run: |
-        echo "=== Installed Capacitor packages ==="
-        npm list --depth=0 2>/dev/null | grep -i capacitor || true
-        echo ""
-        echo "=== Capacitor CLI version ==="
-        npx cap --version
-
     - name: Add Android platform
       run: npx cap add android || true
 
     - name: Sync Capacitor
       run: npx cap sync android
 
-    - name: Generate Android app icons from SVG (icon #9 - Calendario + Check)
+    - name: Add server_client_id to strings.xml
       run: |
-        # Installa strumenti (output silenzioso, ma controlla se disponibili dopo)
-        sudo apt-get install -y librsvg2-bin imagemagick -q > /dev/null 2>&1 || true
-
-        ICON_SVG="resources/icon.svg"
-
-        if [ ! -f "$ICON_SVG" ]; then
-          echo "⚠️ $ICON_SVG non trovato - skip generazione icone"
-          exit 0
-        fi
-
-        if ! command -v rsvg-convert > /dev/null 2>&1; then
-          echo "⚠️ rsvg-convert non disponibile - skip generazione icone"
-          exit 0
-        fi
-
-        echo "✅ Trovato $ICON_SVG + rsvg-convert - generazione icone Android..."
-
-        # Array esplicito (compatibile con bash non-associativo)
-        DIRS="mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi"
-        SIZES="48 72 96 144 192"
-
-        DIR_ARR=($DIRS)
-        SIZE_ARR=($SIZES)
-
-        for i in 0 1 2 3 4; do
-          dir="${DIR_ARR[$i]}"
-          SIZE="${SIZE_ARR[$i]}"
-          DEST="android/app/src/main/res/$dir"
-          mkdir -p "$DEST"
-
-          # Icona quadrata standard
-          rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o "$DEST/ic_launcher.png"
-          echo "  ✓ $dir/ic_launcher.png (${SIZE}x${SIZE})"
-
-          # Icona round: maschera circolare oppure copia semplice come fallback
-          rsvg-convert -w $SIZE -h $SIZE "$ICON_SVG" -o /tmp/icon_tmp.png
-          if command -v convert > /dev/null 2>&1; then
-            convert /tmp/icon_tmp.png \
-              \( +clone -alpha extract \
-                 -draw "fill black polygon 0,0 0,${SIZE} ${SIZE},${SIZE} ${SIZE},0 \
-                        fill white circle $((SIZE/2)),$((SIZE/2)) $((SIZE/2)),0" \
-                 \( +clone -flip \) -compose Multiply -composite \
-                 \( +clone -flop \) -compose Multiply -composite \
-              \) -alpha off -compose CopyOpacity -composite \
-              "$DEST/ic_launcher_round.png" 2>/dev/null \
-            || cp /tmp/icon_tmp.png "$DEST/ic_launcher_round.png"
-          else
-            cp /tmp/icon_tmp.png "$DEST/ic_launcher_round.png"
-          fi
-          echo "  ✓ $dir/ic_launcher_round.png (${SIZE}x${SIZE})"
-        done
-
-        # Foreground adaptive icon (432px = 108dp @ xxxhdpi)
-        ADAPT_SIZE=432
-        ADAPT_DEST="android/app/src/main/res/drawable"
-        mkdir -p "$ADAPT_DEST"
-        rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_foreground.png"
-        echo "  ✓ drawable/ic_launcher_foreground.png (${ADAPT_SIZE}x${ADAPT_SIZE})"
-
-        # Background: gradiente con ImageMagick, fallback copia icona
-        if command -v convert > /dev/null 2>&1; then
-          convert -size ${ADAPT_SIZE}x${ADAPT_SIZE} \
-            gradient:"#6366F1-#312E81" \
-            "$ADAPT_DEST/ic_launcher_background.png" 2>/dev/null \
-          || rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_background.png"
+        STRINGS_FILE="android/app/src/main/res/values/strings.xml"
+        WEB_CLIENT_ID="837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com"
+        if grep -q "server_client_id" "$STRINGS_FILE" 2>/dev/null; then
+          echo "server_client_id already present"
         else
-          rsvg-convert -w $ADAPT_SIZE -h $ADAPT_SIZE "$ICON_SVG" -o "$ADAPT_DEST/ic_launcher_background.png"
+          sed -i "s|</resources>|    <string name=\"server_client_id\">${WEB_CLIENT_ID}</string>\n</resources>|" "$STRINGS_FILE"
+          echo "Added server_client_id to strings.xml"
         fi
-        echo "  ✓ drawable/ic_launcher_background.png"
 
-        echo "✅ Tutte le icone generate con successo"
-
-    - name: Inject google-services.json from GitHub Secret (FCM/Firebase)
+    - name: Inject google-services.json (placeholder if no secret)
       run: |
         DEST="android/app/google-services.json"
         if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" ]; then
           echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 -d > "$DEST"
-          echo "✅ google-services.json iniettato da Secret"
-          # Sanity check
-          cat "$DEST" | python3 -c "import sys, json; d=json.load(sys.stdin); print('project_id:', d['project_info']['project_id'])"
+          echo "✅ google-services.json from secret"
         else
-          echo "⚠️ GOOGLE_SERVICES_JSON_B64 non impostato - FCM disabilitato in questa build"
-          # Crea un google-services.json minimo placeholder per permettere la compilazione
-          cat > "$DEST" <<- 'PLACEHOLDER_EOF'
-        {
-          "project_info": {
-            "project_number": "000000000000",
-            "project_id": "placeholder-project",
-            "storage_bucket": "placeholder-project.appspot.com"
-          },
-          "client": [{
-            "client_info": {
-              "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
-              "android_client_info": { "package_name": "com.scadenze.app" }
-            },
-            "oauth_client": [],
-            "api_key": [{ "current_key": "placeholder" }],
-            "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
-          }],
-          "configuration_version": "1"
-        }
-        PLACEHOLDER_EOF
-          echo "ℹ️ Usato google-services.json placeholder (solo build - push non funzioneranno)"
+          printf '%s\n' \
+            '{' \
+            '  "project_info": {' \
+            '    "project_number": "000000000000",' \
+            '    "project_id": "placeholder-project",' \
+            '    "storage_bucket": "placeholder-project.appspot.com"' \
+            '  },' \
+            '  "client": [{' \
+            '    "client_info": {' \
+            '      "mobilesdk_app_id": "1:000000000000:android:0000000000000000",' \
+            '      "android_client_info": { "package_name": "com.scadenze.app" }' \
+            '    },' \
+            '    "oauth_client": [],' \
+            '    "api_key": [{ "current_key": "placeholder" }],' \
+            '    "services": { "appinvite_service": { "other_platform_oauth_client": [] } }' \
+            '  }],' \
+            '  "configuration_version": "1"' \
+            '}' > "$DEST"
+          echo "ℹ️ Using placeholder google-services.json (FCM disabled)"
         fi
 
-    - name: Add server_client_id to strings.xml (for GoogleAuth plugin)
+    - name: Generate Android icons from SVG
       run: |
-        STRINGS_FILE="android/app/src/main/res/values/strings.xml"
-        WEB_CLIENT_ID="837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com"
-        if ! grep -q "server_client_id" "$STRINGS_FILE"; then
-          sed -i "s|</resources>|    <string name=\"server_client_id\">${WEB_CLIENT_ID}</string>\n</resources>|" "$STRINGS_FILE"
-          echo "Added server_client_id to strings.xml"
-        else
-          echo "server_client_id already present"
+        sudo apt-get install -y librsvg2-bin -q > /dev/null 2>&1 || true
+        ICON_SVG="resources/icon.svg"
+        if [ ! -f "$ICON_SVG" ] || ! command -v rsvg-convert > /dev/null 2>&1; then
+          echo "⚠️ Skipping icon generation (SVG or rsvg-convert not available)"
+          exit 0
         fi
-        echo "=== strings.xml content ==="
-        cat "$STRINGS_FILE"
+        DIRS=(mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi)
+        SIZES=(48 72 96 144 192)
+        for i in 0 1 2 3 4; do
+          DEST="android/app/src/main/res/${DIRS[$i]}"
+          mkdir -p "$DEST"
+          rsvg-convert -w ${SIZES[$i]} -h ${SIZES[$i]} "$ICON_SVG" -o "$DEST/ic_launcher.png"
+          cp "$DEST/ic_launcher.png" "$DEST/ic_launcher_round.png"
+        done
+        echo "✅ Icons generated"
 
-    - name: Copy debug keystore and verify SHA-1
+    - name: Show build.gradle before build (for diagnostics)
       run: |
-        mkdir -p ~/.android
-        cp debug.keystore ~/.android/debug.keystore
-        echo "=== SHA-1 of our debug.keystore ==="
-        keytool -list -v -keystore debug.keystore -storepass android 2>&1 | grep -E "SHA1:|Alias name:" || true
-        echo "=== Keystore file info ==="
-        ls -la debug.keystore ~/.android/debug.keystore
-
-    - name: Inject explicit signingConfigs into build.gradle
-      run: |
-        KEYSTORE_ABS="$(realpath debug.keystore)"
-        echo "Using keystore: $KEYSTORE_ABS"
-        BUILD_GRADLE="android/app/build.gradle"
-        echo "=== BEFORE PATCH ==="
-        cat "$BUILD_GRADLE"
-        # Create the signing config block using printf
-        SIGNING_BLOCK=$(printf '%s\n' \
-          "    signingConfigs {" \
-          "        debug {" \
-          "            storeFile file('KEYSTORE_PATH_PLACEHOLDER')" \
-          "            storePassword 'android'" \
-          "            keyAlias 'androiddebugkey'" \
-          "            keyPassword 'android'" \
-          "        }" \
-          "    }")
-        # Replace placeholder with actual path
-        SIGNING_BLOCK="${SIGNING_BLOCK//KEYSTORE_PATH_PLACEHOLDER/$KEYSTORE_ABS}"
-        # Remove any existing signingConfigs block (simple case: single block)
-        # Then inject the new one before buildTypes
-        if grep -q "signingConfigs" "$BUILD_GRADLE"; then
-          echo "signingConfigs block already present - replacing storeFile path only"
-          sed -i "s|storeFile file(.*)|storeFile file('${KEYSTORE_ABS}')|g" "$BUILD_GRADLE"
-        else
-          echo "Adding new signingConfigs block before buildTypes"
-          # Use awk to inject signingConfigs BEFORE the first buildTypes line
-          awk -v block="$SIGNING_BLOCK" '
-            /buildTypes[[:space:]]*\{/ && !done {
-              printf "%s", block;
-              done = 1;
-            }
-            { print }
-          ' "$BUILD_GRADLE" > "${BUILD_GRADLE}.new"
-          mv "${BUILD_GRADLE}.new" "$BUILD_GRADLE"
-        fi
-        # Ensure debug buildType references signingConfigs.debug
-        if ! grep -q "signingConfig signingConfigs.debug" "$BUILD_GRADLE"; then
-          echo "Adding signingConfig signingConfigs.debug to debug buildType"
-          # Use awk to inject the signingConfig into the debug block
-          awk '
-            /buildTypes[[:space:]]*\{/ { in_buildtypes=1 }
-            in_buildtypes && /debug[[:space:]]*\{/ && !sig_injected {
-              print; print "            signingConfig signingConfigs.debug"; sig_injected=1; next
-            }
-            { print }
-          ' "$BUILD_GRADLE" > "${BUILD_GRADLE}.tmp" && mv "${BUILD_GRADLE}.tmp" "$BUILD_GRADLE"
-          echo "✅ signingConfig aggiunto al blocco debug buildType"
-        fi
-        echo "=== AFTER PATCH ==="
-        cat "$BUILD_GRADLE"
-
-    - name: Add Firebase dependencies to Android project (solo con google-services.json reale)
-      run: |
-        ROOT_GRADLE="android/build.gradle"
-        APP_GRADLE="android/app/build.gradle"
-        GSJ="android/app/google-services.json"
-
-        # Il plugin google-services Gradle RICHIEDE un JSON valido per compilare.
-        # Se è presente solo il placeholder (project_id = "placeholder-project"),
-        # NON applicare il plugin per evitare BUILD FAILED.
-        # L'app si compilerà normalmente; FCM sarà attivo solo con il JSON reale.
-        IS_PLACEHOLDER=false
-        if grep -q '"placeholder-project"' "$GSJ" 2>/dev/null; then
-          IS_PLACEHOLDER=true
-        fi
-
-        if [ "$IS_PLACEHOLDER" = "true" ]; then
-          echo "⏭️ google-services.json è un placeholder - skip Firebase Gradle plugin"
-          echo "ℹ️ Aggiungi il secret GOOGLE_SERVICES_JSON_B64 per abilitare FCM nella build"
-        else
-          echo "✅ google-services.json reale trovato - applico Firebase Gradle plugin..."
-
-          # Aggiungi classpath nel blocco buildscript.dependencies del root build.gradle
-          # awk one-liner: inserisce la riga classpath subito dopo la prima occorrenza di
-          # 'dependencies {' che appare DOPO la riga 'buildscript {'
-          if ! grep -q "google-services" "$ROOT_GRADLE"; then
-            awk '
-              /buildscript/ { in_buildscript=1 }
-              in_buildscript && /dependencies[[:space:]]*\{/ && !done {
-                print; print "        classpath '\''com.google.gms:google-services:4.4.0'\''"; done=1; next
-              }
-              { print }
-            ' "$ROOT_GRADLE" > "${ROOT_GRADLE}.tmp" && mv "${ROOT_GRADLE}.tmp" "$ROOT_GRADLE"
-            echo "✅ google-services classpath aggiunto a buildscript.dependencies"
-          else
-            echo "ℹ️ google-services classpath già presente"
-          fi
-
-          # Applica il plugin all'app se non presente
-          if ! grep -q "com.google.gms.google-services" "$APP_GRADLE"; then
-            echo "" >> "$APP_GRADLE"
-            echo "apply plugin: 'com.google.gms.google-services'" >> "$APP_GRADLE"
-            echo "✅ Plugin com.google.gms.google-services applicato ad app/build.gradle"
-          else
-            echo "ℹ️ Plugin già presente in app/build.gradle"
-          fi
-        fi
-
-        echo "=== Root build.gradle (prime 30 righe) ==="
-        head -30 "$ROOT_GRADLE"
-
-    - name: Show Android project files (pre-build)
-      run: |
-        echo "=== android/build.gradle (root) ==="
-        cat android/build.gradle 2>/dev/null || echo "NOT FOUND"
-        echo ""
-        echo "=== android/app/build.gradle ==="
-        cat android/app/build.gradle 2>/dev/null || echo "NOT FOUND"
-        echo ""
         echo "=== android/variables.gradle ==="
         cat android/variables.gradle 2>/dev/null || echo "NOT FOUND"
-        echo ""
-        echo "=== android/gradle/wrapper/gradle-wrapper.properties ==="
-        cat android/gradle/wrapper/gradle-wrapper.properties 2>/dev/null || echo "NOT FOUND"
-        echo ""
-        echo "=== android/capacitor.settings.gradle ==="
-        cat android/capacitor.settings.gradle 2>/dev/null || echo "NOT FOUND"
+        echo "=== android/app/build.gradle ==="
+        cat android/app/build.gradle 2>/dev/null || echo "NOT FOUND"
 
-    - name: Build APK (Debug) with full diagnostics
+    - name: Build APK (Debug)
       id: build_apk
       run: |
         cd android
         chmod +x gradlew
-        ./gradlew clean 2>&1 | tee /tmp/gradle-clean.log
-        # Use --stacktrace --info for verbose output, redirect ALL output
-        set -o pipefail
-        ./gradlew assembleDebug -x lint --stacktrace --info 2>&1 | tee /tmp/gradle-build.log
+        ./gradlew assembleDebug -x lint 2>&1 | tee /tmp/gradle-build.log
       continue-on-error: true
 
-    - name: Show Gradle error tail (always)
-      if: always()
-      run: |
-        echo "=== LAST 200 LINES OF GRADLE BUILD LOG ==="
-        tail -200 /tmp/gradle-build.log 2>/dev/null || echo "No build log"
-        echo ""
-        echo "=== ERRORS / WARNINGS / EXCEPTIONS ==="
-        grep -iE "FAILED|ERROR|Exception|error:|Could not|Unable to" /tmp/gradle-build.log 2>/dev/null | head -50 || echo "No matches"
-
-    - name: Write error to job summary (publicly visible)
+    - name: Write build result to summary
       if: always()
       run: |
         {
-          echo "# Build Failure Diagnostics"
+          if [ "${{ steps.build_apk.outcome }}" = "success" ]; then
+            echo "# ✅ Build SUCCESS"
+          else
+            echo "# ❌ Build FAILED"
+          fi
           echo ""
-          echo "## Gradle Errors / Exceptions"
+          echo "## Gradle output (last 100 lines)"
           echo '```'
-          grep -iE "FAILED|ERROR|Exception|error:|Could not|Unable to|What went wrong" /tmp/gradle-build.log 2>/dev/null | head -80 || echo "(no matches)"
-          echo '```'
-          echo ""
-          echo "## Last 150 lines of Gradle output"
-          echo '```'
-          tail -150 /tmp/gradle-build.log 2>/dev/null || echo "(no log)"
-          echo '```'
-          echo ""
-          echo "## Capacitor versions installed"
-          echo '```'
-          npm list --depth=0 2>/dev/null | grep -i capacitor || echo "(no capacitor)"
+          tail -100 /tmp/gradle-build.log 2>/dev/null || echo "(no log)"
           echo '```'
           echo ""
-          echo "## android/build.gradle (root)"
-          echo '```gradle'
-          cat android/build.gradle 2>/dev/null | head -60 || echo "(not found)"
+          echo "## Errors"
           echo '```'
-          echo ""
-          echo "## android/app/build.gradle"
-          echo '```gradle'
-          cat android/app/build.gradle 2>/dev/null || echo "(not found)"
-          echo '```'
-          echo ""
-          echo "## android/variables.gradle"
-          echo '```gradle'
-          cat android/variables.gradle 2>/dev/null || echo "(not found)"
-          echo '```'
-          echo ""
-          echo "## Gradle wrapper version"
-          echo '```'
-          cat android/gradle/wrapper/gradle-wrapper.properties 2>/dev/null || echo "(not found)"
+          grep -iE "error:|FAILED|Exception|Could not|What went wrong" /tmp/gradle-build.log 2>/dev/null | head -50 || echo "(none)"
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
 
-    - name: Upload Gradle logs (always)
+    - name: Upload Gradle logs
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: gradle-logs
-        path: |
-          /tmp/gradle-clean.log
-          /tmp/gradle-build.log
+        path: /tmp/gradle-build.log
         retention-days: 7
 
-    - name: Fail if APK build failed
+    - name: Fail build if Gradle failed
       if: steps.build_apk.outcome != 'success'
-      run: |
-        echo "❌ Gradle build failed - see 'Show Gradle error tail' step above"
-        exit 1
+      run: exit 1
 
-    - name: Verify APK signature SHA-1
-      if: steps.build_apk.outcome == 'success'
-      run: |
-        APK="android/app/build/outputs/apk/debug/app-debug.apk"
-        echo "=== APK location: $APK ==="
-        ls -la "$APK"
-        echo "=== APK actual signing SHA-1 (from keytool -printcert) ==="
-        unzip -p "$APK" META-INF/*.RSA | keytool -printcert 2>&1 | grep -iE "SHA1:|SHA-1:|Owner:" || true
-        echo "=== Expected SHA-1: E1:7D:7F:18:34:BB:90:43:F3:19:FD:0B:2F:9F:19:C4:A8:1E:F9:17 ==="
-
-    - name: Upload APK to artifacts
+    - name: Upload APK
       if: steps.build_apk.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
@@ -389,7 +150,7 @@ jobs:
         path: android/app/build/outputs/apk/debug/app-debug.apk
 
     - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/')
+      if: startsWith(github.ref, 'refs/tags/') && steps.build_apk.outcome == 'success'
       uses: softprops/action-gh-release@v1
       with:
         files: android/app/build/outputs/apk/debug/app-debug.apk
