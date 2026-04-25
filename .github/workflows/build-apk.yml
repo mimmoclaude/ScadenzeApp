@@ -118,26 +118,21 @@ jobs:
         exit $GRADLE_EXIT
       continue-on-error: true
 
-    - name: Write build result to summary
+    - name: Upload build log to public paste service
       if: always()
       run: |
-        {
-          if [ "${{ steps.build_apk.outcome }}" = "success" ]; then
-            echo "# ✅ Build SUCCESS"
-          else
-            echo "# ❌ Build FAILED"
-          fi
-          echo ""
-          echo "## Gradle output (last 100 lines)"
-          echo '```'
-          tail -100 /tmp/gradle-build.log 2>/dev/null || echo "(no log)"
-          echo '```'
-          echo ""
-          echo "## Errors"
-          echo '```'
-          grep -iE "error:|FAILED|Exception|Could not|What went wrong" /tmp/gradle-build.log 2>/dev/null | head -50 || echo "(none)"
-          echo '```'
-        } >> "$GITHUB_STEP_SUMMARY"
+        LOG_FILE="/tmp/gradle-build.log"
+        if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
+          PASTE_URL=$(curl -s --data-binary @"$LOG_FILE" https://paste.rs 2>/dev/null || echo "")
+          echo "=== GRADLE LOG URL: $PASTE_URL ==="
+          echo "paste_url=$PASTE_URL" >> "$GITHUB_OUTPUT"
+        else
+          echo "=== No gradle log found or log is empty ==="
+          echo "Log file exists: $(test -f $LOG_FILE && echo yes || echo no)"
+          echo "Log size: $(wc -c < $LOG_FILE 2>/dev/null || echo 0) bytes"
+          # Show what's in /tmp
+          ls -la /tmp/*.log 2>/dev/null || echo "No .log files in /tmp"
+        fi
 
     - name: Upload Gradle logs
       if: always()
