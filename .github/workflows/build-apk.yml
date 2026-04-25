@@ -14,16 +14,46 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '22'
 
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
+    - name: Setup Android SDK and accept licenses
+      run: |
+        echo "=== Android environment ==="
+        echo "ANDROID_HOME=$ANDROID_HOME"
+        echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+        ls "$ANDROID_HOME/cmdline-tools/" 2>/dev/null || echo "No cmdline-tools"
+
+        # Accept all Android SDK licenses
+        SDKMANAGER=""
+        for p in \
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+          "$ANDROID_HOME/cmdline-tools/11.0/bin/sdkmanager" \
+          "$ANDROID_HOME/tools/bin/sdkmanager"; do
+          if [ -x "$p" ]; then SDKMANAGER="$p"; break; fi
+        done
+
+        if [ -n "$SDKMANAGER" ]; then
+          echo "Using sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses 2>/dev/null | tail -5 || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" 2>/dev/null | tail -5 || true
+          echo "✅ SDK licenses accepted"
+        else
+          echo "⚠️ sdkmanager not found - creating license files manually"
+          mkdir -p "$ANDROID_HOME/licenses"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" >> "$ANDROID_HOME/licenses/android-sdk-license"
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+          echo "✅ License files written manually"
+        fi
 
     - name: Install dependencies
       run: npm install
@@ -41,39 +71,23 @@ jobs:
       run: |
         STRINGS_FILE="android/app/src/main/res/values/strings.xml"
         WEB_CLIENT_ID="837673127946-ec145h4fjbp66mqgedngkcv8c6vaf7gp.apps.googleusercontent.com"
-        if grep -q "server_client_id" "$STRINGS_FILE" 2>/dev/null; then
-          echo "server_client_id already present"
-        else
+        if ! grep -q "server_client_id" "$STRINGS_FILE" 2>/dev/null; then
           sed -i "s|</resources>|    <string name=\"server_client_id\">${WEB_CLIENT_ID}</string>\n</resources>|" "$STRINGS_FILE"
-          echo "Added server_client_id to strings.xml"
         fi
 
-    - name: Inject google-services.json (placeholder if no secret)
+    - name: Inject google-services.json
       run: |
         DEST="android/app/google-services.json"
         if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" ]; then
           echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 -d > "$DEST"
-          echo "✅ google-services.json from secret"
         else
           printf '%s\n' \
             '{' \
-            '  "project_info": {' \
-            '    "project_number": "000000000000",' \
-            '    "project_id": "placeholder-project",' \
-            '    "storage_bucket": "placeholder-project.appspot.com"' \
-            '  },' \
-            '  "client": [{' \
-            '    "client_info": {' \
-            '      "mobilesdk_app_id": "1:000000000000:android:0000000000000000",' \
-            '      "android_client_info": { "package_name": "com.scadenze.app" }' \
-            '    },' \
-            '    "oauth_client": [],' \
-            '    "api_key": [{ "current_key": "placeholder" }],' \
-            '    "services": { "appinvite_service": { "other_platform_oauth_client": [] } }' \
-            '  }],' \
+            '  "project_info": {"project_number":"000000000000","project_id":"placeholder-project","storage_bucket":"placeholder-project.appspot.com"},' \
+            '  "client": [{"client_info":{"mobilesdk_app_id":"1:000000000000:android:0000000000000000","android_client_info":{"package_name":"com.scadenze.app"}},"oauth_client":[],"api_key":[{"current_key":"placeholder"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],' \
             '  "configuration_version": "1"' \
             '}' > "$DEST"
-          echo "ℹ️ Using placeholder google-services.json (FCM disabled)"
+          echo "ℹ️ Using placeholder google-services.json"
         fi
 
     - name: Generate Android icons from SVG
@@ -81,8 +95,7 @@ jobs:
         sudo apt-get install -y librsvg2-bin -q > /dev/null 2>&1 || true
         ICON_SVG="resources/icon.svg"
         if [ ! -f "$ICON_SVG" ] || ! command -v rsvg-convert > /dev/null 2>&1; then
-          echo "⚠️ Skipping icon generation (SVG or rsvg-convert not available)"
-          exit 0
+          echo "⚠️ Skipping icon generation"; exit 0
         fi
         DIRS=(mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi)
         SIZES=(48 72 96 144 192)
@@ -94,69 +107,37 @@ jobs:
         done
         echo "✅ Icons generated"
 
-    - name: Show build.gradle before build (for diagnostics)
+    - name: Show Gradle config
       run: |
-        echo "=== android/variables.gradle ==="
+        echo "=== variables.gradle ==="
         cat android/variables.gradle 2>/dev/null || echo "NOT FOUND"
-        echo "=== android/app/build.gradle ==="
+        echo "=== app/build.gradle ==="
         cat android/app/build.gradle 2>/dev/null || echo "NOT FOUND"
+        echo "=== gradle-wrapper.properties ==="
+        cat android/gradle/wrapper/gradle-wrapper.properties 2>/dev/null || echo "NOT FOUND"
 
-    - name: Build APK (Debug)
-      id: build_apk
+    - name: Build APK
       run: |
         cd android
         chmod +x gradlew
-        # Redirect to file then print - avoids pipe hiding Gradle exit code
-        ./gradlew assembleDebug -x lint --no-daemon > /tmp/gradle-build.log 2>&1
-        GRADLE_EXIT=$?
-        echo "=== Gradle output ==="
-        cat /tmp/gradle-build.log
-        echo "=== Gradle exit code: $GRADLE_EXIT ==="
-        # Find APK wherever it was created
-        echo "=== APK search ==="
-        find . -name "*.apk" -type f 2>/dev/null || echo "(no APK found)"
-        exit $GRADLE_EXIT
-      continue-on-error: true
-
-    - name: Upload build log to public paste service
-      if: always()
-      run: |
-        LOG_FILE="/tmp/gradle-build.log"
-        if [ -f "$LOG_FILE" ] && [ -s "$LOG_FILE" ]; then
-          PASTE_URL=$(curl -s --data-binary @"$LOG_FILE" https://paste.rs 2>/dev/null || echo "")
-          echo "=== GRADLE LOG URL: $PASTE_URL ==="
-          echo "paste_url=$PASTE_URL" >> "$GITHUB_OUTPUT"
-        else
-          echo "=== No gradle log found or log is empty ==="
-          echo "Log file exists: $(test -f $LOG_FILE && echo yes || echo no)"
-          echo "Log size: $(wc -c < $LOG_FILE 2>/dev/null || echo 0) bytes"
-          # Show what's in /tmp
-          ls -la /tmp/*.log 2>/dev/null || echo "No .log files in /tmp"
-        fi
-
-    - name: Upload Gradle logs
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: gradle-logs
-        path: /tmp/gradle-build.log
-        retention-days: 7
-
-    - name: Fail build if Gradle failed
-      if: steps.build_apk.outcome != 'success'
-      run: exit 1
+        ./gradlew assembleDebug -x lint --no-daemon --stacktrace 2>&1 | tee /tmp/gradle.log; exit ${PIPESTATUS[0]}
 
     - name: Upload APK
-      if: steps.build_apk.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: |
-          android/app/build/outputs/apk/debug/app-debug.apk
-          android/app/build/outputs/apk/**/*.apk
+        path: android/app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Upload build log (always)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-log
+        path: /tmp/gradle.log
+        retention-days: 3
 
     - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/') && steps.build_apk.outcome == 'success'
+      if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
         files: android/app/build/outputs/apk/debug/app-debug.apk
