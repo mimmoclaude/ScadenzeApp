@@ -313,6 +313,48 @@ jobs:
         echo "=== ERRORS / WARNINGS / EXCEPTIONS ==="
         grep -iE "FAILED|ERROR|Exception|error:|Could not|Unable to" /tmp/gradle-build.log 2>/dev/null | head -50 || echo "No matches"
 
+    - name: Write error to job summary (publicly visible)
+      if: always()
+      run: |
+        {
+          echo "# Build Failure Diagnostics"
+          echo ""
+          echo "## Gradle Errors / Exceptions"
+          echo '```'
+          grep -iE "FAILED|ERROR|Exception|error:|Could not|Unable to|What went wrong" /tmp/gradle-build.log 2>/dev/null | head -80 || echo "(no matches)"
+          echo '```'
+          echo ""
+          echo "## Last 150 lines of Gradle output"
+          echo '```'
+          tail -150 /tmp/gradle-build.log 2>/dev/null || echo "(no log)"
+          echo '```'
+          echo ""
+          echo "## Capacitor versions installed"
+          echo '```'
+          npm list --depth=0 2>/dev/null | grep -i capacitor || echo "(no capacitor)"
+          echo '```'
+          echo ""
+          echo "## android/build.gradle (root)"
+          echo '```gradle'
+          cat android/build.gradle 2>/dev/null | head -60 || echo "(not found)"
+          echo '```'
+          echo ""
+          echo "## android/app/build.gradle"
+          echo '```gradle'
+          cat android/app/build.gradle 2>/dev/null || echo "(not found)"
+          echo '```'
+          echo ""
+          echo "## android/variables.gradle"
+          echo '```gradle'
+          cat android/variables.gradle 2>/dev/null || echo "(not found)"
+          echo '```'
+          echo ""
+          echo "## Gradle wrapper version"
+          echo '```'
+          cat android/gradle/wrapper/gradle-wrapper.properties 2>/dev/null || echo "(not found)"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+
     - name: Upload Gradle logs (always)
       if: always()
       uses: actions/upload-artifact@v4
