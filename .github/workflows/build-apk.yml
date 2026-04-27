@@ -108,6 +108,19 @@ jobs:
         echo "=== AFTER PATCH ==="
         cat "$BUILD_GRADLE"
 
+    - name: Environment debug dump
+      run: |
+        echo "=== JAVA VERSION ==="
+        java -version
+        echo "=== GRADLE WRAPPER VERSION ==="
+        cat android/gradle/wrapper/gradle-wrapper.properties | grep gradle
+        echo "=== NPM VERSIONS ==="
+        npm ls @capacitor/android @capacitor/cli @capacitor/core 2>/dev/null || npm list @capacitor/android @capacitor/cli @capacitor/core
+        echo "=== ANDROID SDK ==="
+        ls -la "$ANDROID_HOME" 2>/dev/null | head -10 || echo "ANDROID_HOME not set"
+        echo "=== CAPACITOR ANDROID PLUGIN ==="
+        ls -la android/capacitor-cordova-android-plugins/ 2>/dev/null | head || echo "Not found"
+
     - name: Build APK (Debug)
       run: |
         cd android
