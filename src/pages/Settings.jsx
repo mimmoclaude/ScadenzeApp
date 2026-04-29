@@ -27,12 +27,12 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
         const result = await Filesystem.writeFile({
           path: filename,
           data: json,
-          directory: Directory.Cache,
+          directory: Directory.Documents,
           encoding: Encoding.UTF8,
         });
         await Share.share({
-          title: 'Backup ScadenzeApp',
-          text: `Backup del ${new Date().toLocaleDateString('it-IT')}`,
+          title: filename,          // es. "scadenze-backup-2026-04-30.json"
+          text: `Backup ScadenzeApp del ${new Date().toLocaleDateString('it-IT')}`,
           url: result.uri,
           dialogTitle: 'Esporta backup su...',
         });
