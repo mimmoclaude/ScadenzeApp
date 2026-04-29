@@ -47,6 +47,22 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Lock screen orientation to portrait
+      run: |
+        MANIFEST="android/app/src/main/AndroidManifest.xml"
+        echo "=== AndroidManifest BEFORE ==="
+        grep -n "screenOrientation\|configChanges" "$MANIFEST" || echo "not present"
+        # Aggiunge screenOrientation="portrait" all'activity element
+        # cerca 'android:configChanges=' e aggiunge screenOrientation prima
+        if ! grep -q "screenOrientation" "$MANIFEST"; then
+          sed -i 's|android:configChanges=|android:screenOrientation="portrait"\n            android:configChanges=|g' "$MANIFEST"
+          echo "Portrait orientation locked"
+        else
+          echo "screenOrientation already set"
+        fi
+        echo "=== AndroidManifest AFTER ==="
+        grep -n "screenOrientation\|configChanges" "$MANIFEST"
+
     - name: Generate Android icons from SVG
       run: |
         set +e

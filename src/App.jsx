@@ -313,7 +313,7 @@ export function App() {
 
   // ── RENDER ────────────────────────────────────────────────────────────────
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100%",background:"#E8EDF8",maxWidth:480,margin:"0 auto",position:"relative"}}>
+    <div style={{display:"flex",flexDirection:"column",height:"100%",width:"100%",maxWidth:480,margin:"0 auto",background:"#E8EDF8",position:"relative",overflow:"hidden"}}>
       <Toast message={toast} />
       <LoadingOverlay visible={loading} />
 

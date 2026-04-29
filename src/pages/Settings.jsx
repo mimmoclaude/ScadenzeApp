@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { setSetting } from '../db';
 
 const inp = {width:"100%",border:"1.5px solid #E2E8F0",borderRadius:11,padding:"12px 13px",fontSize:15,outline:"none",background:"#F8FAFC",color:"#1E293B",WebkitAppearance:"none"};
@@ -18,26 +20,32 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
     };
     const json = JSON.stringify(data, null, 2);
     const filename = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
-    const blob = new Blob([json], { type: 'application/json' });
 
-    // 1. Prova Web Share API con file (Android Chrome moderno)
-    try {
-      const file = new File([blob], filename, { type: 'application/json' });
-      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'Backup Scadenze App' });
-        return;
-      }
-    } catch (e) {
-      if (e?.name === 'AbortError') return;
-    }
-
-    // 2. Android nativo senza share: mostra modal con JSON da copiare
+    // Android nativo: scrivi file in cache e condividi (Drive, WhatsApp, email, ecc.)
     if (Capacitor.isNativePlatform()) {
-      setExportJson(json);
+      try {
+        const result = await Filesystem.writeFile({
+          path: filename,
+          data: json,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8,
+        });
+        await Share.share({
+          title: 'Backup ScadenzeApp',
+          text: `Backup del ${new Date().toLocaleDateString('it-IT')}`,
+          url: result.uri,
+          dialogTitle: 'Esporta backup su...',
+        });
+      } catch (e) {
+        if (e?.message?.includes('cancel') || e?.message?.includes('dismiss')) return;
+        // Fallback: mostra modal con JSON copiabile
+        setExportJson(json);
+      }
       return;
     }
 
-    // 3. Browser desktop: download file classico
+    // Browser desktop: download file classico
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

@@ -41,11 +41,11 @@ export function Payments({ filtered, filter, openAdd, openEdit, deletePay, markP
               <div style={{fontWeight:800,fontSize:18,color:isOverdue(p.dueDate)&&!p.paid?"#EF4444":"#1E293B"}}>€{p.amount.toFixed(2)}</div>
             </div>
           </div>
-          <div style={{display:"flex",gap:7,marginTop:12,paddingTop:12,borderTop:"1px solid #F1F5F9"}}>
-            <button onClick={()=>markPaid(p.id)} style={{flex:1,background:p.paid?"#F8FAFC":"#F0FDF4",color:p.paid?"#94A3B8":"#16A34A",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>{p.paid?"↩️ Riapri":"✓ Pagato"}</button>
-            <button onClick={()=>syncOne(p)} style={{flex:1,background:"#F0F7FF",color:"#4285F4",border:"none",borderRadius:10,padding:"8px",fontSize:12,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent"}}>📅+📧 Google</button>
-            <button onClick={()=>openEdit(p)} className="rBtn" style={{width:40,background:"#F8FAFC",color:"#64748B",fontSize:16,WebkitTapHighlightColor:"transparent"}}>✏️</button>
-            <button onClick={()=>{if(confirm(`Eliminare "${p.title}"?`))deletePay(p.id);}} className="rBtn" style={{width:40,background:"#FEF2F2",color:"#EF4444",fontSize:16,WebkitTapHighlightColor:"transparent"}}>🗑️</button>
+          <div style={{display:"flex",gap:6,marginTop:12,paddingTop:12,borderTop:"1px solid #F1F5F9",flexWrap:"wrap"}}>
+            <button onClick={()=>markPaid(p.id)} style={{flex:"1 1 auto",minWidth:0,background:p.paid?"#F8FAFC":"#F0FDF4",color:p.paid?"#94A3B8":"#16A34A",border:"none",borderRadius:10,padding:"8px 6px",fontSize:12,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent",whiteSpace:"nowrap"}}>{p.paid?"↩️ Riapri":"✓ Pagato"}</button>
+            <button onClick={()=>syncOne(p)} style={{flex:"1 1 auto",minWidth:0,background:"#F0F7FF",color:"#4285F4",border:"none",borderRadius:10,padding:"8px 6px",fontSize:12,fontWeight:700,cursor:"pointer",WebkitTapHighlightColor:"transparent",whiteSpace:"nowrap"}}>📅 Sync</button>
+            <button onClick={()=>openEdit(p)} className="rBtn" style={{width:38,height:36,background:"#F8FAFC",color:"#64748B",fontSize:16,WebkitTapHighlightColor:"transparent"}}>✏️</button>
+            <button onClick={()=>{if(confirm(`Eliminare "${p.title}"?`))deletePay(p.id);}} className="rBtn" style={{width:38,height:36,background:"#FEF2F2",color:"#EF4444",fontSize:16,WebkitTapHighlightColor:"transparent"}}>🗑️</button>
           </div>
         </div>
       ))}
