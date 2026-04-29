@@ -19,7 +19,8 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
       exportDate: new Date().toISOString()
     };
     const json = JSON.stringify(data, null, 2);
-    const filename = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
+    const _d = new Date();
+    const filename = `scadenze-backup-${String(_d.getDate()).padStart(2,'0')}-${String(_d.getMonth()+1).padStart(2,'0')}-${_d.getFullYear()}.json`;
 
     // Android nativo: scrivi file in cache e condividi (Drive, WhatsApp, email, ecc.)
     if (Capacitor.isNativePlatform()) {
