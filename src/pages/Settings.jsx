@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { setSetting } from '../db';
 
 const inp = {width:"100%",border:"1.5px solid #E2E8F0",borderRadius:11,padding:"12px 13px",fontSize:15,outline:"none",background:"#F8FAFC",color:"#1E293B",WebkitAppearance:"none"};
@@ -5,6 +7,9 @@ const btn = (bg,col,ex={}) => ({background:bg,color:col,border:"none",borderRadi
 const gGradient = "linear-gradient(135deg,#4285F4 0%,#34A853 100%)";
 
 export function Settings({ token, userEmail, clientId, setClientId, notifEmail, setNotifEmail, handleLogin, handleLogout, payments, setPayments, setSetting: setSettingFunc }) {
+  const [exportJson, setExportJson] = useState(null);
+  const [copyDone, setCopyDone]     = useState(false);
+
   const handleExport = async () => {
     const data = {
       payments,
@@ -15,7 +20,7 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
     const filename = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
     const blob = new Blob([json], { type: 'application/json' });
 
-    // Android WebView: usa Web Share API (a.click() non funziona su Android)
+    // 1. Prova Web Share API con file (Android Chrome moderno)
     try {
       const file = new File([blob], filename, { type: 'application/json' });
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -23,11 +28,16 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
         return;
       }
     } catch (e) {
-      if (e?.name === 'AbortError') return; // utente ha annullato la condivisione
-      // altri errori: fallback al metodo classico
+      if (e?.name === 'AbortError') return;
     }
 
-    // Fallback per browser desktop
+    // 2. Android nativo senza share: mostra modal con JSON da copiare
+    if (Capacitor.isNativePlatform()) {
+      setExportJson(json);
+      return;
+    }
+
+    // 3. Browser desktop: download file classico
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -36,6 +46,16 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyJson = async () => {
+    try {
+      await navigator.clipboard.writeText(exportJson);
+      setCopyDone(true);
+      setTimeout(() => setCopyDone(false), 2000);
+    } catch {
+      // fallback: seleziona tutto il testo nel textarea
+    }
   };
 
   const handleImport = async (e) => {
@@ -54,6 +74,25 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
 
   return (
     <div style={{padding:14}} className="fade">
+
+      {/* Modal esportazione JSON (fallback Android) */}
+      {exportJson && (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:18,padding:20,width:"100%",maxWidth:440,maxHeight:"80vh",display:"flex",flexDirection:"column",gap:12}}>
+            <div style={{fontWeight:700,fontSize:16,color:"#1E293B"}}>📥 Backup pronto</div>
+            <div style={{fontSize:12,color:"#64748B"}}>Copia il testo qui sotto e salvalo come file <code>.json</code></div>
+            <textarea readOnly value={exportJson}
+              style={{flex:1,minHeight:180,border:"1.5px solid #E2E8F0",borderRadius:10,padding:10,fontSize:11,fontFamily:"monospace",resize:"none",color:"#1E293B",background:"#F8FAFC"}}
+              onFocus={e=>e.target.select()}/>
+            <button onClick={handleCopyJson}
+              style={{...btn(copyDone?"#10B981":"#4285F4","#fff"),marginBottom:4}}>
+              {copyDone ? "✅ Copiato!" : "📋 Copia negli appunti"}
+            </button>
+            <button onClick={()=>setExportJson(null)}
+              style={{...btn("#F1F5F9","#64748B")}}>✕ Chiudi</button>
+          </div>
+        </div>
+      )}
 
       {/* Google Connect */}
       <div className="card" style={{padding:18,marginBottom:12}}>

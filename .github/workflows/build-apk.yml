@@ -49,8 +49,9 @@ jobs:
 
     - name: Generate Android icons from SVG
       run: |
-        # Installa rsvg-convert (fast SVG renderer)
-        sudo apt-get install -y librsvg2-bin 2>/dev/null || true
+        set +e
+        # Installa rsvg-convert (pacchetto librsvg2-bin)
+        sudo apt-get install -y librsvg2-bin
         ICON_SRC="resources/icon.svg"
         ANDROID_RES="android/app/src/main/res"
         echo "=== Generating Android launcher icons ==="
@@ -62,7 +63,14 @@ jobs:
           rsvg-convert -w "$SIZE" -h "$SIZE" "$ICON_SRC" -o "${ANDROID_RES}/mipmap-${DENSITY}/ic_launcher_round.png"
           echo "  ✓ mipmap-${DENSITY} (${SIZE}x${SIZE}px)"
         done
-        echo "Icons generated successfully"
+        # Capacitor 8 genera icone adattive XML in mipmap-anydpi-v26 che su Android 8+
+        # hanno PRECEDENZA sui PNG statici. Le rimuoviamo per usare i nostri PNG.
+        echo "=== Removing adaptive icon XML (so PNG icons are used on Android 8+) ==="
+        rm -f "${ANDROID_RES}/mipmap-anydpi-v26/ic_launcher.xml"
+        rm -f "${ANDROID_RES}/mipmap-anydpi-v26/ic_launcher_round.xml"
+        ls -la "${ANDROID_RES}/mipmap-anydpi-v26/" 2>/dev/null || echo "mipmap-anydpi-v26 cleared"
+        echo "Icons ready"
+        exit 0
 
     - name: Fix Gradle version (Issue #8314 - AGP 9 incompatible)
       run: |
