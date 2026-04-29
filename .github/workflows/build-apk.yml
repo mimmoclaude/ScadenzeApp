@@ -47,18 +47,62 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
-    - name: Fix Gradle version (AGP 8.x incompatible with Gradle 9.x)
+    - name: Fix Gradle version (Issue #8314 - AGP 9 incompatible)
       run: |
         GRADLE_PROPS="android/gradle/wrapper/gradle-wrapper.properties"
+        echo "=== BEFORE Gradle fix ==="
+        cat "$GRADLE_PROPS" || echo "FILE NOT FOUND"
         if [ -f "$GRADLE_PROPS" ]; then
-          echo "Found gradle-wrapper.properties, updating to Gradle 8.14.3..."
-          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.14.3-bin.zip|' "$GRADLE_PROPS"
-          echo "=== Updated gradle-wrapper.properties ==="
-          grep distributionUrl "$GRADLE_PROPS"
+          # Rewrite the file completely with Gradle 8.14.3 (Java properties format with escaped colons)
+          cat > "$GRADLE_PROPS" <<'PROPS_EOF'
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.14.3-bin.zip
+        networkTimeout=10000
+        validateDistributionUrl=true
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        PROPS_EOF
+          # Strip leading 8 spaces (YAML indent)
+          sed -i 's/^        //' "$GRADLE_PROPS"
+          echo "=== AFTER Gradle fix ==="
+          cat "$GRADLE_PROPS"
         else
-          echo "gradle-wrapper.properties not found at $GRADLE_PROPS"
+          echo "ERROR: gradle-wrapper.properties not found at $GRADLE_PROPS"
+          ls -la android/gradle/wrapper/ 2>/dev/null || ls -la android/ 2>/dev/null
           exit 1
         fi
+
+    - name: Pin AGP to 8.12.2 (Issue #8292 - Capacitor 8 max AGP)
+      run: |
+        VARIABLES_GRADLE="android/variables.gradle"
+        BUILD_GRADLE="android/build.gradle"
+        echo "=== variables.gradle BEFORE ==="
+        cat "$VARIABLES_GRADLE" 2>/dev/null || echo "not found"
+        echo "=== build.gradle BEFORE (classpath section) ==="
+        grep -n "com.android.tools.build:gradle" "$BUILD_GRADLE" || echo "not found"
+        # Force AGP version in build.gradle classpath
+        if grep -q "com.android.tools.build:gradle" "$BUILD_GRADLE"; then
+          sed -i 's|com.android.tools.build:gradle:[0-9][0-9.]*|com.android.tools.build:gradle:8.12.2|g' "$BUILD_GRADLE"
+          echo "=== build.gradle AFTER (classpath section) ==="
+          grep -n "com.android.tools.build:gradle" "$BUILD_GRADLE"
+        fi
+        # Also pin androidGradlePluginVersion in variables.gradle if present
+        if [ -f "$VARIABLES_GRADLE" ] && grep -q "androidGradlePluginVersion" "$VARIABLES_GRADLE"; then
+          sed -i "s|androidGradlePluginVersion = ['\"][0-9][0-9.]*['\"]|androidGradlePluginVersion = '8.12.2'|g" "$VARIABLES_GRADLE"
+          echo "=== variables.gradle AFTER ==="
+          cat "$VARIABLES_GRADLE"
+        fi
+
+    - name: Fix proguard config (Issue #8314 - proguard-android.txt deprecated)
+      run: |
+        APP_BUILD_GRADLE="android/app/build.gradle"
+        echo "=== app/build.gradle proguard BEFORE ==="
+        grep -n "proguard" "$APP_BUILD_GRADLE" || echo "no proguard lines"
+        # Replace proguard-android.txt with proguard-android-optimize.txt (defensive)
+        sed -i "s|getDefaultProguardFile('proguard-android.txt')|getDefaultProguardFile('proguard-android-optimize.txt')|g" "$APP_BUILD_GRADLE"
+        echo "=== app/build.gradle proguard AFTER ==="
+        grep -n "proguard" "$APP_BUILD_GRADLE" || echo "no proguard lines"
 
     - name: Add server_client_id to strings.xml (for GoogleAuth plugin)
       run: |
