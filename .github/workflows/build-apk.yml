@@ -167,16 +167,19 @@ jobs:
 
     - name: Environment debug dump
       run: |
+        set +e
         echo "=== JAVA VERSION ==="
         java -version
         echo "=== GRADLE WRAPPER VERSION ==="
-        cat android/gradle/wrapper/gradle-wrapper.properties | grep gradle
-        echo "=== NPM VERSIONS ==="
-        npm ls @capacitor/android @capacitor/cli @capacitor/core 2>/dev/null || npm list @capacitor/android @capacitor/cli @capacitor/core
+        cat android/gradle/wrapper/gradle-wrapper.properties | grep -i gradle || true
+        echo "=== NPM VERSIONS (peer dep mismatch warnings are non-fatal) ==="
+        npm ls @capacitor/android @capacitor/cli @capacitor/core --depth=0 2>&1 | head -20 || true
         echo "=== ANDROID SDK ==="
         ls -la "$ANDROID_HOME" 2>/dev/null | head -10 || echo "ANDROID_HOME not set"
         echo "=== CAPACITOR ANDROID PLUGIN ==="
         ls -la android/capacitor-cordova-android-plugins/ 2>/dev/null | head || echo "Not found"
+        # Always exit successfully - this step is informational only
+        exit 0
 
     - name: Build APK (Debug)
       run: |
