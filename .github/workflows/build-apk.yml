@@ -47,6 +47,23 @@ jobs:
     - name: Sync Capacitor
       run: npx cap sync android
 
+    - name: Generate Android icons from SVG
+      run: |
+        # Installa rsvg-convert (fast SVG renderer)
+        sudo apt-get install -y librsvg2-bin 2>/dev/null || true
+        ICON_SRC="resources/icon.svg"
+        ANDROID_RES="android/app/src/main/res"
+        echo "=== Generating Android launcher icons ==="
+        for SIZE_DENSITY in "48:mdpi" "72:hdpi" "96:xhdpi" "144:xxhdpi" "192:xxxhdpi"; do
+          SIZE="${SIZE_DENSITY%%:*}"
+          DENSITY="${SIZE_DENSITY##*:}"
+          mkdir -p "${ANDROID_RES}/mipmap-${DENSITY}"
+          rsvg-convert -w "$SIZE" -h "$SIZE" "$ICON_SRC" -o "${ANDROID_RES}/mipmap-${DENSITY}/ic_launcher.png"
+          rsvg-convert -w "$SIZE" -h "$SIZE" "$ICON_SRC" -o "${ANDROID_RES}/mipmap-${DENSITY}/ic_launcher_round.png"
+          echo "  ✓ mipmap-${DENSITY} (${SIZE}x${SIZE}px)"
+        done
+        echo "Icons generated successfully"
+
     - name: Fix Gradle version (Issue #8314 - AGP 9 incompatible)
       run: |
         GRADLE_PROPS="android/gradle/wrapper/gradle-wrapper.properties"

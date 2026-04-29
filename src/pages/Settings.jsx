@@ -12,12 +12,29 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
       exportDate: new Date().toISOString()
     };
     const json = JSON.stringify(data, null, 2);
+    const filename = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
     const blob = new Blob([json], { type: 'application/json' });
+
+    // Android WebView: usa Web Share API (a.click() non funziona su Android)
+    try {
+      const file = new File([blob], filename, { type: 'application/json' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Backup Scadenze App' });
+        return;
+      }
+    } catch (e) {
+      if (e?.name === 'AbortError') return; // utente ha annullato la condivisione
+      // altri errori: fallback al metodo classico
+    }
+
+    // Fallback per browser desktop
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `scadenze-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
