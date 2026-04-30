@@ -11,9 +11,9 @@ function Tag({text,color}){return <span className="tag" style={{background:color
 export function Payments({ filtered, filter, openAdd, openEdit, deletePay, markPaid, syncOne, CAT, REC, fmt, daysLeft, isOverdue }) {
   return (
     <div style={{padding:14}} className="fade">
-      <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:12,scrollbarWidth:"none"}}>
+      <div style={{display:"flex",gap:6,marginBottom:12}}>
         {[["all","Tutte"],["upcoming","In arrivo"],["overdue","Scadute"],["paid","Pagate"]].map(([k,l])=>(
-          <button key={k} onClick={()=>filter(k)} style={{flexShrink:0,padding:"8px 18px",borderRadius:99,border:"none",cursor:"pointer",fontWeight:700,fontSize:13,background:"#4285F4",color:"#fff",boxShadow:"0 2px 10px rgba(66,133,244,.35)",WebkitTapHighlightColor:"transparent"}}>{l}</button>
+          <button key={k} onClick={()=>filter(k)} style={{flex:1,padding:"7px 4px",borderRadius:99,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,background:"#4285F4",color:"#fff",boxShadow:"0 2px 8px rgba(66,133,244,.3)",WebkitTapHighlightColor:"transparent",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{l}</button>
         ))}
       </div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
