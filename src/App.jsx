@@ -101,7 +101,6 @@ export function App() {
   const [toast,      setToast]      = useState(null);
   const [filter,     setFilter]     = useState("all");
   const [form,       setForm]       = useState({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""});
-  const [slideClass, setSlideClass] = useState('');
   const tokenClientRef  = useRef(null);
   const touchStartX     = useRef(0);
   const touchStartY     = useRef(0);
@@ -224,14 +223,6 @@ export function App() {
   const openAdd  = () => { setEditId(null); setForm({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""}); setAddOpen(true); };
   const openEdit = p  => { setEditId(p.id); setForm({title:p.title,amount:String(p.amount),dueDate:p.dueDate,recurrence:p.recurrence,category:p.category,notes:p.notes||""}); setAddOpen(true); };
 
-  const switchTab = useCallback((newTab) => {
-    const curr = TABS.indexOf(tab);
-    const next = TABS.indexOf(newTab);
-    if (curr === next) return;
-    setSlideClass(next > curr ? 'tab-enter-right' : 'tab-enter-left');
-    setTab(newTab);
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const onTouchStart = (e) => {
     touchStartX.current    = e.touches[0].clientX;
     touchStartY.current    = e.touches[0].clientY;
@@ -241,18 +232,16 @@ export function App() {
     if (touchCancelled.current) return;
     const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
     const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
-    // Se il movimento verticale prevale, annulla il rilevamento swipe
     if (dy > dx * 1.2 && dy > 8) touchCancelled.current = true;
   };
   const onTouchEnd = (e) => {
     if (touchCancelled.current || addOpen) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
     const dy = e.changedTouches[0].clientY - touchStartY.current;
-    // Soglia minima 55px e spostamento prevalentemente orizzontale
     if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     const curr = TABS.indexOf(tab);
-    if (dx < 0 && curr < TABS.length - 1) switchTab(TABS[curr + 1]);
-    else if (dx > 0 && curr > 0)          switchTab(TABS[curr - 1]);
+    if (dx < 0 && curr < TABS.length - 1) setTab(TABS[curr + 1]);
+    else if (dx > 0 && curr > 0)          setTab(TABS[curr - 1]);
   };
 
   const saveForm = async () => {
@@ -337,7 +326,7 @@ export function App() {
     setPayments([...payments, entry]);
     setBillData(null);
     setBillUrl("");
-    switchTab("payments");
+    setTab("payments");
     notify("✅ Bolletta aggiunta alle scadenze!");
   };
 
@@ -356,22 +345,45 @@ export function App() {
 
       <Header tab={tab} token={token} userEmail={userEmail} overdue={overdue} upcoming={upcoming} totalDue={totalDue} />
 
+      {/* ── Slider: tutte le schede sempre montate, nessun remount = zero flash ── */}
       <div
-        style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}
-        className={slideClass}
-        onAnimationEnd={() => setSlideClass('')}
+        style={{flex:1,overflow:"hidden",position:"relative"}}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {tab==="home"     && <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
-        {tab==="payments" && <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
-        {tab==="bills"    && <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />}
-        {tab==="settings" && <Settings token={token} userEmail={userEmail} clientId={clientId} setClientId={setClientId} notifEmail={notifEmail} setNotifEmail={setNotifEmail} handleLogin={handleLogin} handleLogout={handleLogout} payments={payments} setPayments={setPayments} setSetting={setSetting} />}
-        <div style={{height:16}}/>
+        <div style={{
+          display:"flex",
+          height:"100%",
+          width:`${TABS.length * 100}%`,
+          transform:`translateX(-${TABS.indexOf(tab) * (100/TABS.length)}%)`,
+          transition:"transform 0.28s cubic-bezier(.22,1,.36,1)",
+          willChange:"transform",
+        }}>
+          {/* HOME */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
+            <div style={{height:16}}/>
+          </div>
+          {/* SCADENZE */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
+            <div style={{height:16}}/>
+          </div>
+          {/* BOLLETTE */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />
+            <div style={{height:16}}/>
+          </div>
+          {/* IMPOSTAZIONI */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Settings token={token} userEmail={userEmail} clientId={clientId} setClientId={setClientId} notifEmail={notifEmail} setNotifEmail={setNotifEmail} handleLogin={handleLogin} handleLogout={handleLogout} payments={payments} setPayments={setPayments} setSetting={setSetting} />
+            <div style={{height:16}}/>
+          </div>
+        </div>
       </div>
 
-      <Nav tab={tab} setTab={switchTab} />
+      <Nav tab={tab} setTab={setTab} />
       <AddModal addOpen={addOpen} setAddOpen={setAddOpen} editId={editId} form={form} setForm={setForm} saveForm={saveForm} CAT={CAT} REC={REC} />
     </div>
   );
