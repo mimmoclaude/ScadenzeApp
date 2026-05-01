@@ -101,7 +101,13 @@ export function App() {
   const [toast,      setToast]      = useState(null);
   const [filter,     setFilter]     = useState("all");
   const [form,       setForm]       = useState({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""});
-  const tokenClientRef = useRef(null);
+  const [slideClass, setSlideClass] = useState('');
+  const tokenClientRef  = useRef(null);
+  const touchStartX     = useRef(0);
+  const touchStartY     = useRef(0);
+  const touchCancelled  = useRef(false);
+
+  const TABS = ['home','payments','bills','settings'];
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -218,6 +224,37 @@ export function App() {
   const openAdd  = () => { setEditId(null); setForm({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""}); setAddOpen(true); };
   const openEdit = p  => { setEditId(p.id); setForm({title:p.title,amount:String(p.amount),dueDate:p.dueDate,recurrence:p.recurrence,category:p.category,notes:p.notes||""}); setAddOpen(true); };
 
+  const switchTab = useCallback((newTab) => {
+    const curr = TABS.indexOf(tab);
+    const next = TABS.indexOf(newTab);
+    if (curr === next) return;
+    setSlideClass(next > curr ? 'tab-enter-right' : 'tab-enter-left');
+    setTab(newTab);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onTouchStart = (e) => {
+    touchStartX.current    = e.touches[0].clientX;
+    touchStartY.current    = e.touches[0].clientY;
+    touchCancelled.current = false;
+  };
+  const onTouchMove = (e) => {
+    if (touchCancelled.current) return;
+    const dx = Math.abs(e.touches[0].clientX - touchStartX.current);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY.current);
+    // Se il movimento verticale prevale, annulla il rilevamento swipe
+    if (dy > dx * 1.2 && dy > 8) touchCancelled.current = true;
+  };
+  const onTouchEnd = (e) => {
+    if (touchCancelled.current || addOpen) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // Soglia minima 55px e spostamento prevalentemente orizzontale
+    if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const curr = TABS.indexOf(tab);
+    if (dx < 0 && curr < TABS.length - 1) switchTab(TABS[curr + 1]);
+    else if (dx > 0 && curr > 0)          switchTab(TABS[curr - 1]);
+  };
+
   const saveForm = async () => {
     if (!form.title || !form.dueDate) { notify("⚠️ Titolo e data sono obbligatori"); return; }
     const entry = { ...form, amount: parseFloat(form.amount)||0, synced:false, emailed:false, paid: false };
@@ -300,7 +337,7 @@ export function App() {
     setPayments([...payments, entry]);
     setBillData(null);
     setBillUrl("");
-    setTab("payments");
+    switchTab("payments");
     notify("✅ Bolletta aggiunta alle scadenze!");
   };
 
@@ -319,15 +356,22 @@ export function App() {
 
       <Header tab={tab} token={token} userEmail={userEmail} overdue={overdue} upcoming={upcoming} totalDue={totalDue} />
 
-      <div style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-        {tab==="home" && <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
+      <div
+        style={{flex:1,overflowY:"auto",WebkitOverflowScrolling:"touch"}}
+        className={slideClass}
+        onAnimationEnd={() => setSlideClass('')}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        {tab==="home"     && <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
         {tab==="payments" && <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />}
-        {tab==="bills" && <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />}
+        {tab==="bills"    && <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />}
         {tab==="settings" && <Settings token={token} userEmail={userEmail} clientId={clientId} setClientId={setClientId} notifEmail={notifEmail} setNotifEmail={setNotifEmail} handleLogin={handleLogin} handleLogout={handleLogout} payments={payments} setPayments={setPayments} setSetting={setSetting} />}
         <div style={{height:16}}/>
       </div>
 
-      <Nav tab={tab} setTab={setTab} />
+      <Nav tab={tab} setTab={switchTab} />
       <AddModal addOpen={addOpen} setAddOpen={setAddOpen} editId={editId} form={form} setForm={setForm} saveForm={saveForm} CAT={CAT} REC={REC} />
     </div>
   );
