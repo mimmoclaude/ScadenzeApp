@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
-import { setSetting } from '../db';
+import { setSetting, getSetting } from '../db';
 
 const inp = {width:"100%",border:"1.5px solid #E2E8F0",borderRadius:11,padding:"12px 13px",fontSize:15,outline:"none",background:"#F8FAFC",color:"#1E293B",WebkitAppearance:"none"};
 const btn = (bg,col,ex={}) => ({background:bg,color:col,border:"none",borderRadius:13,padding:"14px",fontWeight:700,fontSize:15,cursor:"pointer",width:"100%",...ex});
 const gGradient = "linear-gradient(135deg,#4285F4 0%,#34A853 100%)";
 
 export function Settings({ token, userEmail, clientId, setClientId, notifEmail, setNotifEmail, handleLogin, handleLogout, payments, setPayments, setSetting: setSettingFunc }) {
-  const [exportJson, setExportJson] = useState(null);
-  const [copyDone, setCopyDone]     = useState(false);
+  const [exportJson,   setExportJson]   = useState(null);
+  const [copyDone,     setCopyDone]     = useState(false);
+  const [anthropicKey, setAnthropicKey] = useState('');
+  const [keySaved,     setKeySaved]     = useState(false);
+
+  useEffect(() => {
+    getSetting('anthropicApiKey').then(k => { if (k) setAnthropicKey(k); }).catch(() => {});
+  }, []);
+
+  const saveAnthropicKey = async () => {
+    await setSetting('anthropicApiKey', anthropicKey.trim());
+    setKeySaved(true);
+    setTimeout(() => setKeySaved(false), 2500);
+  };
 
   const handleExport = async () => {
     const data = {
@@ -152,6 +164,48 @@ export function Settings({ token, userEmail, clientId, setClientId, notifEmail, 
             <div><div style={{fontSize:13,fontWeight:600,color:"#374151"}}>{t}</div><div style={{fontSize:11,color:"#94A3B8",marginTop:2}}>{s}</div></div>
           </div>
         ))}
+      </div>
+
+      {/* AI Lettura Bollette — opzionale */}
+      <div className="card" style={{padding:18,marginBottom:12}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+          <div style={{width:38,height:38,borderRadius:11,background:"#EDE9FE",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🤖</div>
+          <div>
+            <div style={{fontWeight:700,fontSize:15,color:"#1E293B"}}>AI lettura bollette</div>
+            <div style={{fontSize:11,color:"#64748B",marginTop:1}}>Opzionale — Claude Haiku (Anthropic)</div>
+          </div>
+        </div>
+
+        <div style={{background:"#F5F3FF",border:"1px solid #DDD6FE",borderRadius:10,padding:"10px 12px",
+          fontSize:12,color:"#5B21B6",lineHeight:1.7,marginBottom:14}}>
+          <b>Senza API key</b>: analisi testo offline (PDF digitali)<br/>
+          <b>Con API key</b>: Claude AI — PDF scansionati + accuratezza 99%+<br/>
+          Costo stimato: <b>~€0,0003 per bolletta</b> (praticamente gratis)<br/>
+          Ottieni la tua chiave su{' '}
+          <span style={{fontWeight:700}}>console.anthropic.com</span> → API Keys
+        </div>
+
+        <label style={{fontSize:12,fontWeight:600,color:"#64748B",display:"block",marginBottom:5}}>
+          Anthropic API Key
+        </label>
+        <input
+          value={anthropicKey}
+          onChange={e => setAnthropicKey(e.target.value)}
+          onBlur={saveAnthropicKey}
+          placeholder="sk-ant-api03-…"
+          type="password"
+          style={{...inp, fontFamily:"monospace", fontSize:12, marginBottom:12}}
+        />
+        <button onClick={saveAnthropicKey}
+          style={{...btn(keySaved?"#10B981":"#7C3AED","#fff"), WebkitTapHighlightColor:"transparent"}}>
+          {keySaved ? "✅ API key salvata!" : "💾 Salva API key"}
+        </button>
+        {anthropicKey && (
+          <div style={{marginTop:10,padding:"8px 12px",background:"#F0FDF4",borderRadius:10,
+            fontSize:12,color:"#16A34A",fontWeight:500}}>
+            ✅ API key configurata — Claude AI attivo nella lettura PDF
+          </div>
+        )}
       </div>
 
       {/* Data Management */}
