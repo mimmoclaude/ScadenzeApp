@@ -487,17 +487,7 @@ export function App() {
           transition: noTransition ? "none" : "transform 0.28s cubic-bezier(.22,1,.36,1)",
           willChange:"transform",
         }}>
-          {/* HOME */}
-          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
-            <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
-            <div style={{height:16}}/>
-          </div>
-          {/* SCADENZE */}
-          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
-            <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
-            <div style={{height:16}}/>
-          </div>
-          {/* AGENDA */}
+          {/* TABS[0] — AGENDA (appointments) */}
           <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
             <Appointments
               appointments={appointments} apptFilter={apptFilter} setApptFilter={setApptFilter}
@@ -507,7 +497,17 @@ export function App() {
               syncAppt={syncAppt} APPT_CAT={APPT_CAT} fmt={fmt} />
             <div style={{height:16}}/>
           </div>
-          {/* BOLLETTE */}
+          {/* TABS[1] — SCADENZE (home/dashboard) */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Home openAdd={openAdd} overdue={overdue} upcoming={upcoming} totalDue={totalDue} payments={payments} markPaid={markPaid} syncOne={syncOne} syncAll={syncAll} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
+            <div style={{height:16}}/>
+          </div>
+          {/* TABS[2] — RIEPILOGO (payments) */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
+            <div style={{height:16}}/>
+          </div>
+          {/* TABS[3] — BOLLETTE */}
           <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
             <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />
             <div style={{height:16}}/>

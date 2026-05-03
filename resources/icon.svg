@@ -1,37 +1,109 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <!-- Background gradient -->
   <defs>
+    <!-- Sfondo viola-indaco profondo -->
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#2563EB"/>
-      <stop offset="100%" style="stop-color:#1E40AF"/>
+      <stop offset="0%"   style="stop-color:#1E0A4E"/>
+      <stop offset="50%"  style="stop-color:#4C1D95"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
     </linearGradient>
+    <!-- Glow campanella -->
+    <radialGradient id="bellGlow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%"   style="stop-color:#C4B5FD;stop-opacity:0.35"/>
+      <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:0"/>
+    </radialGradient>
+    <!-- Luce campanella -->
+    <linearGradient id="bellFill" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%"   style="stop-color:#EDE9FE"/>
+      <stop offset="100%" style="stop-color:#C4B5FD"/>
+    </linearGradient>
+    <!-- Brillantezza badge -->
+    <linearGradient id="badgeFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   style="stop-color:#FDE68A"/>
+      <stop offset="100%" style="stop-color:#F59E0B"/>
+    </linearGradient>
+    <!-- Riflesso superiore -->
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"   style="stop-color:#ffffff;stop-opacity:0.18"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="18" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="glowFilter" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>
-  <!-- Sfondo arrotondato -->
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <!-- Corpo calendario (bianco) -->
-  <rect x="88" y="144" width="336" height="288" rx="28" fill="white" opacity="0.97"/>
-  <!-- Header calendario (blu) -->
-  <rect x="88" y="144" width="336" height="92" rx="28" fill="#1D4ED8"/>
-  <rect x="88" y="200" width="336" height="36" fill="#1D4ED8"/>
-  <!-- Ganci calendario -->
-  <rect x="172" y="108" width="32" height="68" rx="16" fill="#93C5FD"/>
-  <rect x="308" y="108" width="32" height="68" rx="16" fill="#93C5FD"/>
-  <!-- Testo header "REMIND" -->
-  <text x="256" y="198" text-anchor="middle" fill="white" font-size="38" font-weight="800"
-        font-family="Arial,Helvetica,sans-serif" letter-spacing="4">REMIND</text>
-  <!-- Righe griglia -->
-  <line x1="88" y1="288" x2="424" y2="288" stroke="#E2E8F0" stroke-width="3"/>
-  <line x1="88" y1="344" x2="424" y2="344" stroke="#E2E8F0" stroke-width="3"/>
-  <!-- Pallini giorni (tre righe) -->
-  <circle cx="152" cy="317" r="10" fill="#BFDBFE"/>
-  <circle cx="214" cy="317" r="10" fill="#BFDBFE"/>
-  <circle cx="276" cy="317" r="10" fill="#BFDBFE"/>
-  <circle cx="152" cy="373" r="10" fill="#BFDBFE"/>
-  <circle cx="214" cy="373" r="10" fill="#BFDBFE"/>
-  <!-- Cerchio checkmark (verde) -->
-  <circle cx="352" cy="373" r="64" fill="#10B981"/>
-  <circle cx="352" cy="373" r="58" fill="#059669"/>
-  <!-- Checkmark -->
-  <path d="M320 373 L344 398 L392 345" stroke="white" stroke-width="18"
-        stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- ── SFONDO ── -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Alone luminoso dietro la campana -->
+  <ellipse cx="256" cy="230" rx="170" ry="150" fill="url(#bellGlow)"/>
+
+  <!-- ── ONDE DI NOTIFICA (anelli concentrici) ── -->
+  <!-- Anello esterno -->
+  <path d="M 180 172 A 110 110 0 0 1 332 172" stroke="#A78BFA" stroke-width="8"
+        stroke-linecap="round" fill="none" opacity="0.35"/>
+  <!-- Anello medio -->
+  <path d="M 205 150 A 85 85 0 0 1 307 150" stroke="#C4B5FD" stroke-width="7"
+        stroke-linecap="round" fill="none" opacity="0.50"/>
+  <!-- Anello interno -->
+  <path d="M 228 133 A 60 60 0 0 1 284 133" stroke="#DDD6FE" stroke-width="6"
+        stroke-linecap="round" fill="none" opacity="0.65"/>
+
+  <!-- ── CAMPANELLA ── -->
+  <!-- Corpo principale con ombra -->
+  <g filter="url(#shadow)">
+    <!-- Corpo campana -->
+    <path d="
+      M 256 168
+      C 202 168 172 208 172 258
+      L 172 298
+      C 172 316 158 326 152 340
+      L 360 340
+      C 354 326 340 316 340 298
+      L 340 258
+      C 340 208 310 168 256 168 Z
+    " fill="url(#bellFill)"/>
+    <!-- Impugnatura superiore -->
+    <rect x="242" y="148" width="28" height="28" rx="14" fill="url(#bellFill)"/>
+  </g>
+
+  <!-- Riflesso lucido sul corpo campana -->
+  <path d="
+    M 256 172
+    C 218 172 196 202 192 242
+    L 188 258
+    C 200 240 220 226 256 224
+    C 280 224 298 232 310 244
+    L 308 228
+    C 300 196 280 172 256 172 Z
+  " fill="white" opacity="0.28"/>
+
+  <!-- ── BATACCHIO / CLAPPER ── -->
+  <ellipse cx="256" cy="352" rx="32" ry="20" fill="#A78BFA"/>
+  <ellipse cx="256" cy="352" rx="22" ry="14" fill="#7C3AED"/>
+
+  <!-- ── BADGE NOTIFICA (punto arancio-giallo in alto a destra) ── -->
+  <circle cx="352" cy="160" r="38" fill="#1E0A4E" opacity="0.7"/>
+  <circle cx="352" cy="160" r="30" fill="url(#badgeFill)" filter="url(#glowFilter)"/>
+  <!-- Brillantezza sul badge -->
+  <ellipse cx="344" cy="148" rx="10" ry="6" fill="white" opacity="0.55"/>
+
+  <!-- ── TESTO "MR" sotto la campana ── -->
+  <text x="256" y="432"
+        text-anchor="middle"
+        fill="white"
+        font-size="56"
+        font-weight="900"
+        font-family="Arial Black,Arial,Helvetica,sans-serif"
+        letter-spacing="8"
+        opacity="0.92">MR</text>
+
+  <!-- Sottolineatura decorativa -->
+  <rect x="190" y="444" width="124" height="5" rx="2.5" fill="#A78BFA" opacity="0.7"/>
+
+  <!-- ── RIFLESSO VETRO SUPERIORE ── -->
+  <rect x="0" y="0" width="512" height="200" rx="110" fill="url(#shine)"/>
 </svg>
