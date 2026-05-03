@@ -6,10 +6,10 @@ export function Header({ tab, token, userEmail, overdue, upcoming, totalDue }) {
 
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,padding:"0 20px",position:"relative"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:38,height:38,borderRadius:11,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>💳</div>
+          <div style={{width:38,height:38,borderRadius:11,background:"rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>🔔</div>
           <div>
-            <div style={{fontFamily:"'DM Serif Display'",fontSize:21,letterSpacing:"-0.3px",lineHeight:1}}>ScadenzeApp</div>
-            <div style={{fontSize:11,opacity:.65,marginTop:2}}>Pagamenti · Bollette · Google</div>
+            <div style={{fontFamily:"'DM Serif Display'",fontSize:21,letterSpacing:"-0.3px",lineHeight:1}}>Me Remind</div>
+            <div style={{fontSize:11,opacity:.65,marginTop:2}}>Agenda · Scadenze · Google</div>
           </div>
         </div>
         <div style={{background:token?"rgba(52,168,83,.3)":"rgba(255,255,255,.12)",borderRadius:10,padding:"5px 10px",fontSize:11,fontWeight:600,border:token?"1px solid rgba(52,168,83,.5)":"none",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>

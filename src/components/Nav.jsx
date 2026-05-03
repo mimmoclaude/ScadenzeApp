@@ -13,7 +13,7 @@ export function Nav({ tab, setTab }) {
         ))}
       </div>
       <div style={{textAlign:"right",paddingRight:10,paddingBottom:2,fontSize:9,opacity:.4,color:"#fff",letterSpacing:.3}}>
-        v{__GIT_VERSION__}
+        2023 - D. Branca &nbsp;&nbsp;&nbsp; v{__GIT_VERSION__}
       </div>
     </div>
   );
