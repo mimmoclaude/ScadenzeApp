@@ -149,6 +149,7 @@ export function App() {
   const [apptModalOpen, setApptModalOpen] = useState(false);
   const [apptEditId,    setApptEditId]    = useState(null);
   const [apptInitForm,  setApptInitForm]  = useState(null);
+  const [noTransition,  setNoTransition]  = useState(false);
 
   const tokenClientRef  = useRef(null);
   const touchStartX     = useRef(0);
@@ -356,8 +357,18 @@ export function App() {
     const dy = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     const curr = TABS.indexOf(tab);
-    if (dx < 0 && curr < TABS.length - 1) setTab(TABS[curr + 1]);
-    else if (dx > 0 && curr > 0)          setTab(TABS[curr - 1]);
+    const next = dx < 0
+      ? (curr + 1) % TABS.length                      // sinistra → avanza (circolare)
+      : (curr - 1 + TABS.length) % TABS.length;       // destra   → indietro (circolare)
+    // Wrap-around: disabilita transizione per evitare scivolamento "al contrario"
+    const isWrap = (dx < 0 && curr === TABS.length - 1) || (dx > 0 && curr === 0);
+    if (isWrap) {
+      setNoTransition(true);
+      setTab(TABS[next]);
+      requestAnimationFrame(() => requestAnimationFrame(() => setNoTransition(false)));
+    } else {
+      setTab(TABS[next]);
+    }
   };
 
   const saveForm = async () => {
@@ -473,7 +484,7 @@ export function App() {
           height:"100%",
           width:`${TABS.length * 100}%`,
           transform:`translateX(-${TABS.indexOf(tab) * (100/TABS.length)}%)`,
-          transition:"transform 0.28s cubic-bezier(.22,1,.36,1)",
+          transition: noTransition ? "none" : "transform 0.28s cubic-bezier(.22,1,.36,1)",
           willChange:"transform",
         }}>
           {/* HOME */}
