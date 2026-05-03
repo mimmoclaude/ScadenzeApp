@@ -128,7 +128,7 @@ async function addAppointmentToCalendar(token, appt) {
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export function App() {
-  const [tab,        setTab]        = useState("home");
+  const [tab,        setTab]        = useState("appointments");
   const [payments,   setPayments]   = useState([]);
   const [token,      setToken]      = useState(null);
   const [userEmail,  setUserEmail]  = useState("");
@@ -155,7 +155,7 @@ export function App() {
   const touchStartY     = useRef(0);
   const touchCancelled  = useRef(false);
 
-  const TABS = ['home','payments','appointments','bills','settings'];
+  const TABS = ['appointments','home','payments','bills','settings'];
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
   useEffect(() => {

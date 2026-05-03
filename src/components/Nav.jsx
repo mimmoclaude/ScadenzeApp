@@ -1,5 +1,5 @@
 export function Nav({ tab, setTab }) {
-  const NAV = [{id:"home",icon:"🏠",label:"Home"},{id:"payments",icon:"📋",label:"Scadenze"},{id:"appointments",icon:"📅",label:"Agenda"},{id:"bills",icon:"📄",label:"Bollette"},{id:"settings",icon:"⚙️",label:"Config"}];
+  const NAV = [{id:"appointments",icon:"📅",label:"Agenda"},{id:"home",icon:"📊",label:"Riepilogo"},{id:"payments",icon:"📋",label:"Scadenze"},{id:"bills",icon:"📄",label:"Bollette"},{id:"settings",icon:"⚙️",label:"Config"}];
 
   return (
     <div style={{background:"linear-gradient(145deg,#162560 0%,#2D4FBD 60%,#3B63E8 100%)",color:"#fff",flexShrink:0,paddingBottom:"env(safe-area-inset-bottom)",position:"relative"}}>
