@@ -3,15 +3,20 @@ import { openDB } from 'idb';
 let db;
 
 export async function initDB() {
-  db = await openDB('ScadenzeAppDB', 1, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('payments')) {
-        const store = db.createObjectStore('payments', { keyPath: 'id' });
-        store.createIndex('dueDate', 'dueDate');
-        store.createIndex('category', 'category');
-      }
-      if (!db.objectStoreNames.contains('settings')) {
+  db = await openDB('ScadenzeAppDB', 2, {
+    upgrade(db, oldVersion) {
+      // ── v1: pagamenti e impostazioni ─────────────────────────────────────
+      if (oldVersion < 1) {
+        const pStore = db.createObjectStore('payments', { keyPath: 'id' });
+        pStore.createIndex('dueDate', 'dueDate');
+        pStore.createIndex('category', 'category');
         db.createObjectStore('settings', { keyPath: 'key' });
+      }
+      // ── v2: appuntamenti ─────────────────────────────────────────────────
+      if (oldVersion < 2) {
+        const aStore = db.createObjectStore('appointments', { keyPath: 'id' });
+        aStore.createIndex('date', 'date');
+        aStore.createIndex('category', 'category');
       }
     },
   });
@@ -66,6 +71,29 @@ export async function setSetting(key, value) {
 export async function deleteSetting(key) {
   const db = await getDB();
   await db.delete('settings', key);
+}
+
+// ── Appointments CRUD ────────────────────────────────────────────────────────
+export async function getAppointments() {
+  const db = await getDB();
+  return db.getAll('appointments');
+}
+
+export async function addAppointment(appt) {
+  const db = await getDB();
+  appt.id = appt.id || Date.now();
+  await db.add('appointments', appt);
+  return appt.id;
+}
+
+export async function updateAppointment(appt) {
+  const db = await getDB();
+  await db.put('appointments', appt);
+}
+
+export async function deleteAppointment(id) {
+  const db = await getDB();
+  await db.delete('appointments', id);
 }
 
 // ── Batch operations ─────────────────────────────────────────────────────────

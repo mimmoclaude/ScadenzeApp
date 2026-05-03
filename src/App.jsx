@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
-import { getPayments, addPayment, updatePayment, deletePayment, getSetting, setSetting, deleteAllPayments, exportPayments, importData } from './db';
+import { getPayments, addPayment, updatePayment, deletePayment, getSetting, setSetting, deleteAllPayments, exportPayments, importData,
+         getAppointments, addAppointment, updateAppointment, deleteAppointment } from './db';
 import { Header } from './components/Header';
 import { Nav } from './components/Nav';
 import { Home } from './pages/Home';
 import { Payments } from './pages/Payments';
 import { Bills } from './pages/Bills';
+import { Appointments } from './pages/Appointments';
 import { Settings } from './pages/Settings';
+import { AddAppointmentModal } from './components/AddAppointmentModal';
 import { Toast } from './components/Toast';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { AddModal } from './components/AddModal';
@@ -22,6 +25,13 @@ const CAT = {
   other:        { emoji:"💳", label:"Altro",         color:"#64748B" },
 };
 const REC = { once:"Una volta", monthly:"Mensile", quarterly:"Trimestrale", annual:"Annuale" };
+
+const APPT_CAT = {
+  personal: { emoji:'👤', label:'Personale', color:'#8B5CF6' },
+  work:     { emoji:'💼', label:'Lavoro',    color:'#3B82F6' },
+  medical:  { emoji:'🏥', label:'Medico',    color:'#EF4444' },
+  other:    { emoji:'📌', label:'Altro',     color:'#64748B' },
+};
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const fmt       = d => d ? new Date(d).toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"}) : "—";
@@ -84,6 +94,38 @@ async function sendMail(token, to, p) {
   if (!r.ok) { const e=await r.json(); throw new Error(e.error?.message||"Errore Gmail"); }
 }
 
+async function addAppointmentToCalendar(token, appt) {
+  let start, end;
+  if (appt.allDay) {
+    start = { date: appt.date };
+    end   = { date: appt.endDate || appt.date };
+  } else {
+    const sDT = new Date(`${appt.date}T${appt.time || '09:00'}:00`);
+    const eDT = appt.endTime
+      ? new Date(`${appt.endDate || appt.date}T${appt.endTime}:00`)
+      : new Date(sDT.getTime() + 3600000);
+    start = { dateTime: sDT.toISOString(), timeZone:'Europe/Rome' };
+    end   = { dateTime: eDT.toISOString(), timeZone:'Europe/Rome' };
+  }
+  const reminders = appt.reminder > 0
+    ? { useDefault:false, overrides:[{ method:'email', minutes:appt.reminder },{ method:'popup', minutes:appt.reminder }] }
+    : { useDefault:false, overrides:[] };
+  const body = {
+    summary:     `${APPT_CAT[appt.category]?.emoji||'📅'} ${appt.title}`,
+    description: appt.notes || '',
+    start, end, reminders,
+  };
+  if (appt.location) body.location = appt.location;
+  const r = await fetch(`${GCAL}/calendars/primary/events`, {
+    method:'POST',
+    headers:{ Authorization:`Bearer ${token}`, 'Content-Type':'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) { const e = await r.json(); throw new Error(e.error?.message||'Errore Calendar'); }
+  const data = await r.json();
+  return data.id;
+}
+
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export function App() {
   const [tab,        setTab]        = useState("home");
@@ -101,18 +143,27 @@ export function App() {
   const [toast,      setToast]      = useState(null);
   const [filter,     setFilter]     = useState("all");
   const [form,       setForm]       = useState({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""});
+  // ── Appuntamenti ─────────────────────────────────────────────────────────
+  const [appointments,  setAppointments]  = useState([]);
+  const [apptFilter,    setApptFilter]    = useState('all');
+  const [apptModalOpen, setApptModalOpen] = useState(false);
+  const [apptEditId,    setApptEditId]    = useState(null);
+  const [apptInitForm,  setApptInitForm]  = useState(null);
+
   const tokenClientRef  = useRef(null);
   const touchStartX     = useRef(0);
   const touchStartY     = useRef(0);
   const touchCancelled  = useRef(false);
 
-  const TABS = ['home','payments','bills','settings'];
+  const TABS = ['home','payments','appointments','bills','settings'];
 
   // ── Bootstrap ────────────────────────────────────────────────────────────
   useEffect(() => {
     const loadData = async () => {
       const p = await getPayments();
       setPayments(p);
+      const ap = await getAppointments();
+      setAppointments(ap);
       const c  = await getSetting("gClientId");   if (c)  { setClientId(c); }
       const e  = await getSetting("userEmail");   if (e)  setUserEmail(e);
       const ne = await getSetting("notifEmail");  if (ne) setNotifEmail(ne);
@@ -222,6 +273,71 @@ export function App() {
   };
   const openAdd  = () => { setEditId(null); setForm({title:"",amount:"",dueDate:"",recurrence:"monthly",category:"utilities",notes:""}); setAddOpen(true); };
   const openEdit = p  => { setEditId(p.id); setForm({title:p.title,amount:String(p.amount),dueDate:p.dueDate,recurrence:p.recurrence,category:p.category,notes:p.notes||""}); setAddOpen(true); };
+
+  // ── Handlers Appuntamenti ─────────────────────────────────────────────────
+  const openAddAppt  = () => { setApptEditId(null); setApptInitForm(null); setApptModalOpen(true); };
+  const openEditAppt = a  => { setApptEditId(a.id); setApptInitForm({...a}); setApptModalOpen(true); };
+
+  const saveApptForm = async (form) => {
+    const entry = { ...form, synced:false, calEventId:null, done:false, archived:false };
+    if (apptEditId) {
+      const existing = appointments.find(a => a.id === apptEditId);
+      const updated  = { ...existing, ...form };
+      await updateAppointment(updated);
+      setAppointments(appointments.map(a => a.id === apptEditId ? updated : a));
+      notify("✏️ Appuntamento aggiornato!");
+    } else {
+      const newAppt = { id: Date.now(), ...entry };
+      await addAppointment(newAppt);
+      setAppointments([...appointments, newAppt]);
+      notify("✅ Appuntamento aggiunto!");
+    }
+    setApptModalOpen(false);
+  };
+
+  const deleteAppt = async (id) => {
+    await deleteAppointment(id);
+    setAppointments(appointments.filter(a => a.id !== id));
+    notify("🗑️ Eliminato");
+  };
+
+  const markDoneAppt = async (id) => {
+    const a = appointments.find(x => x.id === id);
+    const updated = { ...a, done: !a.done };
+    await updateAppointment(updated);
+    setAppointments(appointments.map(x => x.id === id ? updated : x));
+  };
+
+  const archiveAppt = async (id) => {
+    const a = appointments.find(x => x.id === id);
+    const updated = { ...a, archived: true };
+    await updateAppointment(updated);
+    setAppointments(appointments.map(x => x.id === id ? updated : x));
+    notify("📦 Archiviato");
+  };
+
+  const unarchiveAppt = async (id) => {
+    const a = appointments.find(x => x.id === id);
+    const updated = { ...a, archived: false };
+    await updateAppointment(updated);
+    setAppointments(appointments.map(x => x.id === id ? updated : x));
+    notify("↩️ Ripristinato");
+  };
+
+  const syncAppt = async (appt) => {
+    if (!token) { notify("⚠️ Prima connetti Google in Impostazioni"); return; }
+    setLoading(true);
+    try {
+      const eventId = await addAppointmentToCalendar(token, appt);
+      const updated = { ...appt, synced:true, calEventId:eventId };
+      await updateAppointment(updated);
+      setAppointments(appointments.map(a => a.id === appt.id ? updated : a));
+      notify("📅 Aggiunto al calendario!");
+    } catch(e) {
+      notify(`❌ Calendar: ${e.message}`);
+    }
+    setLoading(false);
+  };
 
   const onTouchStart = (e) => {
     touchStartX.current    = e.touches[0].clientX;
@@ -370,6 +486,16 @@ export function App() {
             <Payments filtered={filtered} filter={setFilter} openAdd={openAdd} openEdit={openEdit} deletePay={deletePay} markPaid={markPaid} syncOne={syncOne} CAT={CAT} REC={REC} fmt={fmt} daysLeft={daysLeft} isOverdue={isOverdue} />
             <div style={{height:16}}/>
           </div>
+          {/* AGENDA */}
+          <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
+            <Appointments
+              appointments={appointments} apptFilter={apptFilter} setApptFilter={setApptFilter}
+              openAdd={openAddAppt} openEdit={openEditAppt}
+              deleteAppt={deleteAppt} markDone={markDoneAppt}
+              archiveAppt={archiveAppt} unarchiveAppt={unarchiveAppt}
+              syncAppt={syncAppt} APPT_CAT={APPT_CAT} fmt={fmt} />
+            <div style={{height:16}}/>
+          </div>
           {/* BOLLETTE */}
           <div style={{width:`${100/TABS.length}%`,height:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",flexShrink:0}}>
             <Bills billData={billData} setBillData={setBillData} importBill={importBill} fmt={fmt} />
@@ -385,6 +511,7 @@ export function App() {
 
       <Nav tab={tab} setTab={setTab} />
       <AddModal addOpen={addOpen} setAddOpen={setAddOpen} editId={editId} form={form} setForm={setForm} saveForm={saveForm} CAT={CAT} REC={REC} />
+      <AddAppointmentModal open={apptModalOpen} onClose={() => setApptModalOpen(false)} editId={apptEditId} initForm={apptInitForm} onSave={saveApptForm} APPT_CAT={APPT_CAT} />
     </div>
   );
 }
